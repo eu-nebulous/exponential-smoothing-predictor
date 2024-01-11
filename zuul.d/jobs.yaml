@@ -8,15 +8,15 @@
       - nebulous-exponential-smoothing-predictor-container-images
     description: Build the container images.
     files: &image_files
-      - ^java-spring-boot-demo/
+      - ^exponential-smoothing-predictor/
     vars: &image_vars
       promote_container_image_job: nebulous-exponential-smoothing-predictor-upload-container-images
       container_images:
-        - context: java-spring-boot-demo
+        - context: exponential-smoothing-predictor
           registry: quay.io
-          repository: quay.io/nebulous/exponential-smoothing-predictor-java-spring-boot-demo
+          repository: quay.io/nebulous/exponential-smoothing-predictor-exponential-smoothing-predictor
           namespace: nebulous
-          repo_shortname: exponential-smoothing-predictor-java-spring-boot-demo
+          repo_shortname: exponential-smoothing-predictor-exponential-smoothing-predictor
           repo_description: ""
 
 - job:
@@ -44,7 +44,7 @@
     description: Run Hadolint on Dockerfile(s).
     vars:
       dockerfiles:
-        - java-spring-boot-demo/Dockerfile
+        - exponential-smoothing-predictor/Dockerfile
 
 - job:
     name: nebulous-exponential-smoothing-predictor-helm-lint
