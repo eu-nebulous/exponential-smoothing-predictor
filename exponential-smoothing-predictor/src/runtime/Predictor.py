@@ -86,11 +86,9 @@ def predict_attribute(application_state, attribute, configuration_file_location,
 
         # Windows
         if platform == "win32":
-            os.chdir("exponential-smoothing-predictor/src/r_predictors")
             command = ['Rscript', 'forecasting_real_workload.R', application_state.prediction_data_filename, attribute]
         # linux
         elif platform == "linux" or platform == "linux2":
-            os.chdir("/home/r_predictions")
             command = ["Rscript forecasting_real_workload.R "+str(application_state.prediction_data_filename) + " "+ str(attribute)]
         #Choosing the solution of linux
         else:
@@ -101,15 +99,12 @@ def predict_attribute(application_state, attribute, configuration_file_location,
 
         # Windows
         if platform == "win32":
-            os.chdir("exponential-smoothing-predictor/src/r_predictors")
             command = ['Rscript', 'forecasting_real_workload.R', application_state.prediction_data_filename, attribute, next_prediction_time]
         # Linux
         elif platform == "linux" or platform == "linux2":
-            os.chdir("/home/r_predictions")
             command = ["Rscript forecasting_real_workload.R "+str(application_state.prediction_data_filename) + " "+ str(attribute)+" "+str(next_prediction_time) + " 2>&1"]
         #Choosing the solution of linux
         else:
-            os.chdir("/home/r_predictions")
             command = ["Rscript forecasting_real_workload.R "+str(application_state.prediction_data_filename) + " "+ str(attribute)+" "+str(next_prediction_time)]
 
     process_output = run(command, shell=True, stdout=PIPE, stderr=PIPE, universal_newlines=True)
@@ -456,6 +451,17 @@ def get_dataset_file(attribute):
     pass
 
 def main():
+
+    #Change to the appropriate directory in order i) To invoke the forecasting script appropriately and ii) To store the monitoring data necessary for predictions
+    from sys import platform
+    if platform == "win32":
+        os.chdir("exponential-smoothing-predictor/src/r_predictors")
+        # linux
+    elif platform == "linux" or platform == "linux2":
+        os.chdir("/home/r_predictions")
+    else:
+        os.chdir("/home/r_predictions")
+
     EsPredictorState.configuration_file_location = sys.argv[1]
     Utilities.load_configuration()
     Utilities.update_influxdb_organization_id()

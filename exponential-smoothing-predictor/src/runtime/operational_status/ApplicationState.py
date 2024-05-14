@@ -92,7 +92,7 @@ class ApplicationState:
                 print_data_from_db = True
                 query_string = 'from(bucket: "'+self.influxdb_bucket+'")  |> range(start:-'+time_interval_to_get_data_for+')  |> filter(fn: (r) => r["_measurement"] == "'+metric_name+'")'
                 influx_connector = InfluxDBConnector()
-                print("performing query")
+                print("performing query for application with bucket "+str(self.influxdb_bucket))
                 current_time = time.time()
                 result = influx_connector.client.query_api().query(query_string, EsPredictorState.influxdb_organization)
                 elapsed_time = time.time()-current_time
