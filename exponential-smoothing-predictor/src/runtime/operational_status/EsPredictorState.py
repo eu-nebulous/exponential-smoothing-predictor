@@ -4,43 +4,46 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.        
 
-import threading
+import threading, logging
+
+from influxdb_client import InfluxDBClient
 from jproperties import Properties
 
-class State:
+class EsPredictorState:
+
+    """
+    The name of the predictor
+    """
+    forecaster_name = "exponentialsmoothing"
+    """
+    A dictionary containing statistics on the application state of individual applications
+    """
+    individual_application_state = {}
     """
     Fail-safe default values introduced below
     """
-
-    prediction_data_filename = "default_application.csv"
-    MONITORING_DATA_PREFIX = "monitoring"
-    FORECASTING_CONTROL_PREFIX = "forecasting"
+    application_name_prefix = "nebulous_"
+    GENERAL_TOPIC_PREFIX = "eu.nebulouscloud."
+    MONITORING_DATA_PREFIX = "monitoring."
+    FORECASTING_CONTROL_PREFIX = "forecasting."
 
     #Used to create the dataset from the InfluxDB
-    application_name = "default_application"
-    influxdb_bucket = "nebulous"
-    influxdb_organization = "nebulous"
-    influxdb_token = "tzIfpbU9b77quyvN0yHIbWltSh1c1371-o9nl_wJYaeo5TWdk5txyxXhp2iaLVMvOvf020HnEEAkE0yy5AllKQ=="
-    influxdb_dbname = "nebulous"
-    influxdb_password = "adminadmin"
-    influxdb_username = "admin"
+    influxdb_organization = "my-org"
+    influxdb_organization_id = "e0033247dcca0c54"
+    influxdb_token = "my-super-secret-auth-token"
+    influxdb_password = "my-password"
+    influxdb_username = "my-user"
     influxdb_port = 8086
     influxdb_hostname = "localhost"
     path_to_datasets = "./datasets"
-    dataset_file_name = "exponential_smoothing_dataset.csv"
     number_of_days_to_use_data_from = 365
 
-    #Forecaster variables
-    metrics_to_predict = []
-    epoch_start = 0
-    next_prediction_time = 0
-    previous_prediction = None
-    configuration_file_location="prediction_configuration.properties"
+
+    configuration_file_location="exponential-smoothing-predictor/prediction_configuration.properties"
     configuration_details = Properties()
     prediction_processing_time_safety_margin_seconds = 20
     disconnected = True
     disconnection_handler = threading.Condition()
-    initial_metric_list_received = False
     testing_prediction_functionality = False
     total_time_intervals_to_predict = 8
 
@@ -59,4 +62,6 @@ class State:
     @staticmethod
     #TODO inspect State.connection
     def check_stale_connection():
-        return (not State.subscribing_connector)
+        return (not EsPredictorState.subscribing_connector)
+
+

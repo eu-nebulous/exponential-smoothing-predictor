@@ -20,8 +20,8 @@ library(purrr)
 #
 # This forecasting script relies on the presence of a dataset which contains the metric values to be forecasted. It is called with three main parameters - dataset path, metric to be forecasted and the time for which the forecast should be produced - and two optional parameters, the alpha and beta coefficients to be used during forecasting. The time for which the forecast should be produced may be ommitted under some circumstances.
 #
-# To create the final dataset which will be used for predictions, this script creates a timeseries with all times from the beginning of the observations in the dataset, until its end, using 1-second intervals (to allow for predictions based on epoch). In order for the exponential smoothing forecaster to operate satisfactorily, it is necessary to set the `number_of_seconds_to_aggregate_on` variable to a value which is large enough to smooth small fluctuations, yet small enough to allow for reasonable reaction times (e.g 300 seconds).
-# Once the creation of the dataset is over, the `configuration_forecasting_horizon` configuration property is evaluated. If this value is positive, the time for which the forecast should be made should be provided as a command line argument, and this allows the formation of a training dataset and a test dataset. If a non-positive horizon is provided, then the `realtime_mode` configuration property is evaluated. In case that this is false, the prediction time does not need to be provided (it means we simply want to evaluate the predictive functionality based on past data), and the next prediction time will be the time of the last observation in the dataset. If the realtime mode parameter is true, then the prediction time needs to be provided, and the script will try to create a prediction using the minimum value between the next prediction time and the last observation time which is available in the dataset - in this case the next prediction time is also needed(TODO:perhaps this behaviour should be changed).
+# To create the final dataset which will be used for predictions, this script creates a timeseries with all times from the beginning of the observations in the dataset, until its end, using 1-second intervals (to allow for predictions based on epoch). In order for the exponential smoothing forecaster to operate satisfactorily, it is necessary to set the `number_of_seconds_to_aggregate_on` variable to a value which is large enough to smooth small fluctuations, yet small enough to allow for reasonable reaction times (e.g 300 seconds). Beware, this number_of_seconds_to_aggregate_on variable is changed (probably increased) at runtime from its initial configuration so that the forecaster does not consume too much time trying to create predictions. This means that more observations will be necessary to guarantee accurate predictions
+# Once the creation of the dataset is over, the `configuration_forecasting_horizon` configuration property is evaluated. If this value is positive, the time for which the forecast should be made should be provided as a command line argument, and this allows the formation of a training dataset and a test dataset. If a non-positive horizon is provided, then the `realtime_mode` configuration property is evaluated. In case that this is false, the prediction time does not need to be provided (it means we simply want to evaluate the predictive functionality based on past data), and the next prediction time will be the time of the last observation in the dataset. If the realtime mode parameter is true, then the prediction time needs to be provided, and the script will try to create a prediction using the maximum value between the next prediction time and the last observation time which is available in the dataset - in this case the next prediction time is needed as well.
 #Then, the final data points which will be used for the forecasting are determined, and the forecasting models are created, to produce predictions. The user of the script can opt to try finding the best parameters manually, using the `try_to_optimize_parameters` configuration parameter.
 
 find_smape <- function(actual, forecast) {
@@ -92,7 +92,14 @@ beta_value_argument <- as.double(args[5])
 #mydata <- read.csv(configuration_properties$input_data_file, sep=",", header=TRUE)
 #mydata <- read.csv(dataset_to_process, sep=",", header=TRUE)
 
-data_to_process <- read.csv(dataset_to_process, sep=",", header=TRUE)
+if (file.info(dataset_to_process)$size > 0) {
+  # File is not empty, proceed with reading
+  data_to_process <- read.csv(dataset_to_process, sep=",", header=TRUE)
+} else {
+  # File is empty, handle accordingly (e.g., show a message or skip the reading process)
+  print(paste("The file ",dataset_to_process," is empty. Please provide a non-empty file."))
+  stop()
+}
 #sanitize data_to_process by removing any very old values which may have been accidentally introduced. For this reason we remove all data points before now - number_of_days*24hrs*3600sec/hr seconds, and we additionally subtract configuration_properties$prediction_processing_time_safety_margin_seconds in order to account for the time it takes to create the dataset and start the prediction process)
 current_time <- get_current_epoch_time()
 if (!realtime_mode){
@@ -293,13 +300,13 @@ if (try_to_optimize_parameters){
 
 #Creation of forecasting model
 if (try_to_optimize_parameters){
-  holt_winters_forecasting_model <- HoltWinters(mydata_trainseries,alpha=optimal_alpha,beta=optimal_beta,gamma=optimal_gamma)
+holt_winters_forecasting_model <- HoltWinters(mydata_trainseries,alpha=optimal_alpha,beta=optimal_beta,gamma=optimal_gamma)
 
-  ets_forecasting_model <- tryCatch({
-    ets(mydata_trainseries,alpha = optimal_alpha,beta = optimal_beta,gamma = optimal_gamma) #phi is left to be optimized
-  }, error = function(e) {
-    NULL
-  })
+ets_forecasting_model <- tryCatch({
+ets(mydata_trainseries,alpha = optimal_alpha,beta = optimal_beta,gamma = optimal_gamma) #phi is left to be optimized
+}, error = function(e) {
+NULL
+})
 
 
 
@@ -332,6 +339,19 @@ if (try_to_optimize_parameters){
         }, error = function(e) {
           NULL
         })
+      if (length(mydata_trainseries)<3){
+        print("Possible issue expected with a very small trainseries (length is less than 3). The contents of the trainseries are the following:")
+        print(mydata_trainseries)
+        print("This trainseries originated from the following aggregated data:")
+        print(mydata.train)
+        print(paste("The number of seconds to aggregate on is:",number_of_seconds_to_aggregate_on))
+        print("The above aggregated data was based on these training data points: ")
+        print(training_datapoints)
+        print("These training data points originate from these data points:")
+        print(data_points)
+        print(paste("by using the first", number_of_data_points_used_for_training, "data points"))
+
+      }
       holt_winters_forecasting_model <- HoltWinters(mydata_trainseries,gamma=FALSE)
     }
   }

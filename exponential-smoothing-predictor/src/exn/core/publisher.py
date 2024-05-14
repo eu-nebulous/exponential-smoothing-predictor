@@ -10,12 +10,15 @@ _logger = logging.getLogger(__name__)
 
 class Publisher(link.Link):
 
-    def send(self, body=None):
+    def send(self, body=None, application=None):
         if not body:
             body = {}
 
-        _logger.debug(f"{self.address} Sending {body} ")
+        _logger.info(f"[{self.key}] sending to {self._link.target.address} for application={application} - {body} ")
         msg = self._prepare_message(body)
+        if application:
+            msg.subject = application
+
         self._link.send(msg)
 
     def _prepare_message(self, body=None):

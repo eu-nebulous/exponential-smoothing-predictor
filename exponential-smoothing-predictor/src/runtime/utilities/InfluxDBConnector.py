@@ -2,7 +2,7 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision
 from datetime import datetime
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-from runtime.operational_status.State import State
+from runtime.operational_status.EsPredictorState import EsPredictorState
 
 #import influxdb_client, os, time
 #from influxdb_client import InfluxDBClient, Point, WritePrecision
@@ -28,32 +28,32 @@ from runtime.operational_status.State import State
 #    time.sleep(1) # separate points by 1 second
 
 
-data = [
-    {
-        "measurement": "temperature",
-        "tags": {"location": "Prague"},
-        "fields": {"temperature": 25.3}
-    }
-]
+#data = [
+#    {
+#       "measurement": "temperature",
+#        "tags": {"location": "Prague"},
+#        "fields": {"temperature": 25.3}
+#    }
+#]
 
 
 
 
 class InfluxDBConnector:
-    client = InfluxDBClient(url="http://"+State.influxdb_hostname+":"+str(State.influxdb_port), token=State.influxdb_token, org=State.influxdb_organization)
+    client = InfluxDBClient(url="http://" + EsPredictorState.influxdb_hostname + ":" + str(EsPredictorState.influxdb_port), token=EsPredictorState.influxdb_token, org=EsPredictorState.influxdb_organization)
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
     def InfluxDBConnector(self):
         pass
-    def write_data(self,data):
-        self.write_api.write(bucket=State.influxdb_bucket, org=State.influxdb_organization, record=data, write_precision=WritePrecision.S)
+    def write_data(self,data,bucket):
+        self.write_api.write(bucket=bucket, org=EsPredictorState.influxdb_organization, record=data, write_precision=WritePrecision.S)
 
     def get_data(self):
         query_api = self.client.query_api()
         query = """from(bucket: "nebulous")
          |> range(start: -1m)
          |> filter(fn: (r) => r._measurement == "temperature")"""
-        tables = query_api.query(query, org=State.influxdb_organization)
+        tables = query_api.query(query, org=EsPredictorState.influxdb_organization)
 
         for table in tables:
             for record in table.records:

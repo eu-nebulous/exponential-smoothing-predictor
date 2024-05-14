@@ -27,19 +27,19 @@ class Publisher(publisher.Publisher):
         self.send({"state": message_type,"message": None})
 
     def starting(self):
-        self._send_message(States.STARTING)
+        self._send_message(States.STARTING.value)
 
     def started(self):
-        self._send_message(States.STARTED)
+        self._send_message(States.STARTED.value)
 
     def ready(self):
-        self._send_message(States.READY)
+        self._send_message(States.READY.value)
 
     def stopping(self):
-        self._send_message(States.STOPPING)
+        self._send_message(States.STOPPING.value)
 
     def stopped(self):
-        self._send_message(States.STOPPED)
+        self._send_message(States.STOPPED.value)
 
     def custom(self, state):
         self._send_message(state)

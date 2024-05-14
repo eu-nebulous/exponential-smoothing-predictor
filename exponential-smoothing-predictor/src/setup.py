@@ -18,7 +18,7 @@ setup(
     author_email="atsagkaropoulos@mail.ntua.gr",
 
     # Packages
-    packages=["r_predictors","runtime","runtime.exn","runtime.operational_status","runtime.utilities","runtime.predictions"],
+    packages=["r_predictors","runtime","exn","exn.core","exn.handler","exn.settings","runtime.operational_status","runtime.utilities","runtime.predictions"],
 
     # Include additional files into the package
     include_package_data=True,
@@ -37,4 +37,10 @@ setup(
         "python-slugify",
         "jproperties"
     ],
+    #package_dir={'': '.'},
+    entry_points={
+        'console_scripts': [
+            'start_exsmoothing = runtime.Predictor:main',
+        ],
+    }
 )

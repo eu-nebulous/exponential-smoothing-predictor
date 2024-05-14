@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: "quay.io/nebulous/exponential-smoothing-predictor-java-spring-boot-demo"
+  repository: "quay.io/nebulous/exponential-smoothing-predictor"
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""

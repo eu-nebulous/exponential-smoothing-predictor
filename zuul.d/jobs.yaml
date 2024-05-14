@@ -14,9 +14,9 @@
       container_images:
         - context: exponential-smoothing-predictor
           registry: quay.io
-          repository: quay.io/nebulous/exponential-smoothing-predictor-exponential-smoothing-predictor
+          repository: quay.io/nebulous/exponential-smoothing-predictor
           namespace: nebulous
-          repo_shortname: exponential-smoothing-predictor-exponential-smoothing-predictor
+          repo_shortname: exponential-smoothing-predictor
           repo_description: ""
 
 - job:
