@@ -92,11 +92,13 @@ class ApplicationState:
                 print_data_from_db = True
                 query_string = 'from(bucket: "'+self.influxdb_bucket+'")  |> range(start:-'+time_interval_to_get_data_for+')  |> filter(fn: (r) => r["_measurement"] == "'+metric_name+'")'
                 influx_connector = InfluxDBConnector()
-                print("performing query for application with bucket "+str(self.influxdb_bucket))
+                logging.info("performing query for application with bucket "+str(self.influxdb_bucket))
+                logging.info("The body of the query is "+query_string)
+                logging.info("The configuration of the client is "+Utilities.get_fields_and_values(influx_connector))
                 current_time = time.time()
                 result = influx_connector.client.query_api().query(query_string, EsPredictorState.influxdb_organization)
                 elapsed_time = time.time()-current_time
-                print("performed query, it took "+str(elapsed_time) + " seconds")
+                logging.info("performed query, it took "+str(elapsed_time) + " seconds")
                 #print(result.to_values())
                 with open(self.get_prediction_data_filename(EsPredictorState.configuration_file_location, metric_name), 'w') as file:
                     for table in result:

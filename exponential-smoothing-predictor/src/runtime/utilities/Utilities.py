@@ -8,7 +8,7 @@ import pathlib
 #from morphemic.dataset import DatasetMaker
 import datetime
 import logging,os
-from dateutil import parser
+import json
 from influxdb_client import InfluxDBClient
 
 from runtime.operational_status.EsPredictorState import EsPredictorState
@@ -42,7 +42,7 @@ class Utilities:
             EsPredictorState.influxdb_password = EsPredictorState.configuration_details.get("INFLUXDB_PASSWORD").data
             EsPredictorState.influxdb_org = EsPredictorState.configuration_details.get("INFLUXDB_ORG").data
         #This method accesses influx db to retrieve the most recent metric values.
-
+            Utilities.print_with_time("The configuration effective currently is the following\n "+Utilities.get_fields_and_values(EsPredictorState))
 
     @staticmethod
     def update_influxdb_organization_id():
@@ -63,3 +63,13 @@ class Utilities:
             return path
         else:
             return path + os.sep
+
+    @staticmethod
+    def default_to_string(obj):
+        return str(obj)
+    @classmethod
+    def get_fields_and_values(cls,object):
+        #Returns those fields that do not start with __ (and their values)
+        fields_values = {key: value for key, value in object.__dict__.items() if not key.startswith("__")}
+        return json.dumps(fields_values,indent=4,default=cls.default_to_string)
+

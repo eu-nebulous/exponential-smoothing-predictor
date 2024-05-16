@@ -1,7 +1,7 @@
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from datetime import datetime
 from influxdb_client.client.write_api import SYNCHRONOUS
-
+import logging
 from runtime.operational_status.EsPredictorState import EsPredictorState
 
 #import influxdb_client, os, time
@@ -40,11 +40,11 @@ from runtime.operational_status.EsPredictorState import EsPredictorState
 
 
 class InfluxDBConnector:
-    client = InfluxDBClient(url="http://" + EsPredictorState.influxdb_hostname + ":" + str(EsPredictorState.influxdb_port), token=EsPredictorState.influxdb_token, org=EsPredictorState.influxdb_organization)
-    write_api = client.write_api(write_options=SYNCHRONOUS)
 
-    def InfluxDBConnector(self):
-        pass
+    def __init__(self):
+        self.client = InfluxDBClient(url="http://" + EsPredictorState.influxdb_hostname + ":" + str(EsPredictorState.influxdb_port), token=EsPredictorState.influxdb_token, org=EsPredictorState.influxdb_organization)
+        self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
+        logging.info("Successfully created InfluxDB connector, client is "+str(self.client))
     def write_data(self,data,bucket):
         self.write_api.write(bucket=bucket, org=EsPredictorState.influxdb_organization, record=data, write_precision=WritePrecision.S)
 

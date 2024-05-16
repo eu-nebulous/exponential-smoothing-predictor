@@ -60,7 +60,7 @@ def sanitize_prediction_statistics(prediction_confidence_interval, prediction_va
         confidence_interval_modified = True
     if confidence_interval_modified:
         new_prediction_confidence_interval = str(lower_value_prediction_confidence_interval)+","+str(upper_value_prediction_confidence_interval)
-        print_with_time("The confidence interval "+prediction_confidence_interval+"was modified, becoming  "+str(new_prediction_confidence_interval)+", taking into account the values of the metric")
+        print_with_time("The confidence interval "+prediction_confidence_interval+" was modified, becoming "+str(new_prediction_confidence_interval)+", taking into account the values of the metric")
     if (prediction_value<lower_bound_value[metric_name]):
         print_with_time("The prediction value of " + str(prediction_value) + " for metric " + metric_name + " was sanitized to " + str(lower_bound_value))
         prediction_value = lower_bound_value
