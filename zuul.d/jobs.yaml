@@ -18,6 +18,7 @@
           namespace: nebulous
           repo_shortname: exponential-smoothing-predictor
           repo_description: ""
+          tags: ["r1-latest"]
 
 - job:
     name: nebulous-exponential-smoothing-predictor-upload-container-images
