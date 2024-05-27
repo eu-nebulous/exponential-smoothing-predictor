@@ -8,6 +8,7 @@
       - nebulous-exponential-smoothing-predictor-container-images
     description: Build the container images.
     files: &image_files
+      - ^zuul\.d/jobs\.yaml$
       - ^exponential-smoothing-predictor/
     vars: &image_vars
       promote_container_image_job: nebulous-exponential-smoothing-predictor-upload-container-images
