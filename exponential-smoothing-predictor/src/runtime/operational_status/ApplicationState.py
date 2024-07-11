@@ -77,20 +77,10 @@ class ApplicationState:
         Utilities.print_with_time("Starting dataset creation process...")
 
         try:
-            """
-            Deprecated functionality to retrieve dataset creation details. Relevant functionality moved inside the load configuration method
-            influxdb_hostname = os.environ.get("INFLUXDB_HOSTNAME","localhost")
-            influxdb_port = int(os.environ.get("INFLUXDB_PORT","8086"))
-            influxdb_username = os.environ.get("INFLUXDB_USERNAME","morphemic")
-            influxdb_password = os.environ.get("INFLUXDB_PASSWORD","password")
-            influxdb_dbname = os.environ.get("INFLUXDB_DBNAME","morphemic")
-            influxdb_org = os.environ.get("INFLUXDB_ORG","morphemic")
-            application_name = "default_application"
-            """
             for metric_name in self.metrics_to_predict:
                 time_interval_to_get_data_for = str(EsPredictorState.number_of_days_to_use_data_from) + "d"
                 print_data_from_db = True
-                query_string = 'from(bucket: "'+self.influxdb_bucket+'")  |> range(start:-'+time_interval_to_get_data_for+')  |> filter(fn: (r) => r["_measurement"] == "'+metric_name+'")'
+                query_string = 'from (bucket: "'+self.influxdb_bucket+'")  |> range(start:-'+time_interval_to_get_data_for+')  |> filter(fn: (r) => r["_measurement"] == "'+metric_name+'")'
                 influx_connector = InfluxDBConnector()
                 logging.info("performing query for application with bucket "+str(self.influxdb_bucket))
                 logging.info("The body of the query is "+query_string)
@@ -98,9 +88,13 @@ class ApplicationState:
                 current_time = time.time()
                 result = influx_connector.client.query_api().query(query_string, EsPredictorState.influxdb_organization)
                 elapsed_time = time.time()-current_time
-                logging.info("performed query, it took "+str(elapsed_time) + " seconds")
+                prediction_dataset_filename = self.get_prediction_data_filename(EsPredictorState.configuration_file_location, metric_name)
+                if len(result)>0:
+                    logging.info(f"Performed query to the database, it took "+str(elapsed_time) + f" seconds to receive {len(result[0].records)} entries (from the first and possibly only table returned). Now logging to {prediction_dataset_filename}")
+                else:
+                    logging.info("No records returned from database")
                 #print(result.to_values())
-                with open(self.get_prediction_data_filename(EsPredictorState.configuration_file_location, metric_name), 'w') as file:
+                with open(prediction_dataset_filename, 'w') as file:
                     for table in result:
                         #print header row
                         file.write("Timestamp,ems_time,"+metric_name+"\r\n")

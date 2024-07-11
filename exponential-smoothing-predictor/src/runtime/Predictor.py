@@ -109,7 +109,7 @@ def predict_attribute(application_state, attribute, configuration_file_location,
 
     process_output = run(command, shell=True, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     if (process_output.stdout==""):
-        print_with_time("Empty output from R predictions - the error output is the following:")
+        logging.info("Empty output from R predictions - the error output is the following:")
         print(process_output.stderr) #There was an error during the calculation of the predicted value
 
     process_output_string_list = process_output.stdout.replace("[1] ", "").replace("\"", "").split()
@@ -139,8 +139,14 @@ def predict_attribute(application_state, attribute, configuration_file_location,
         prediction_valid = True
         print_with_time("The prediction for attribute " + attribute + " is " + str(prediction_value)+ " and the confidence interval is "+prediction_confidence_interval)
     else:
-        print_with_time("There was an error during the calculation of the predicted value for "+str(attribute)+", the error log follows")
-        print_with_time(process_output.stdout)
+        logging.info("There was an error during the calculation of the predicted value for "+str(attribute)+", the error log follows")
+        logging.info(process_output.stdout)
+        logging.info("\n")
+        logging.info("----------------------")
+        logging.info("Printing stderr")
+        logging.info("----------------------")
+        logging.info("\n")
+        logging.info(process_output.stderr)
 
     output_prediction = Prediction(prediction_value, prediction_confidence_interval,prediction_valid,prediction_mae,prediction_mse,prediction_mape,prediction_smape)
     return output_prediction
@@ -454,8 +460,9 @@ def main():
 
     #Change to the appropriate directory in order i) To invoke the forecasting script appropriately and ii) To store the monitoring data necessary for predictions
     from sys import platform
-    if platform == "win32":
-        os.chdir("exponential-smoothing-predictor/src/r_predictors")
+    if platform == "win32" or bool(os.environ["TEST_RUN"]):
+        print(os.listdir("."))
+        os.chdir("../r_predictors")
         # linux
     elif platform == "linux" or platform == "linux2":
         os.chdir("/home/r_predictions")
