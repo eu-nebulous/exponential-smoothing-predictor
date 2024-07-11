@@ -35,7 +35,13 @@ setup(
     # Dependent packages (distributions)
     install_requires=[
         "python-slugify",
-        "jproperties"
+        "jproperties",
+        "requests",
+        "numpy",
+        "python-qpid-proton",
+        "influxdb-client",
+        "python-dotenv",
+        "python-dateutil"
     ],
     #package_dir={'': '.'},
     entry_points={
