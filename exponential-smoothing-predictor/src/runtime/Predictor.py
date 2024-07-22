@@ -460,7 +460,7 @@ def main():
 
     #Change to the appropriate directory in order i) To invoke the forecasting script appropriately and ii) To store the monitoring data necessary for predictions
     from sys import platform
-    if platform == "win32" or bool(os.environ["TEST_RUN"]):
+    if platform == "win32" or bool(os.environ.get("TEST_RUN",False)):
         print(os.listdir("."))
         os.chdir("../r_predictors")
         # linux
