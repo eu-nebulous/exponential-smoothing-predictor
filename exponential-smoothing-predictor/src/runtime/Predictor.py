@@ -306,13 +306,14 @@ class ConsumerHandler(Handler):
             
             logging.info("New monitoring data arrived at topic "+address)
             if address == 'metric_list':
+
                 application_name = body["name"]
                 message_version = body["version"]
                 application_state = None
                 individual_application_state = {}
                 application_already_defined = application_name in EsPredictorState.individual_application_state
                 if ( application_already_defined and
-                   ( message_version == EsPredictorState.individual_application_state[application_state].message_version )
+                   ( message_version == EsPredictorState.individual_application_state[application_name].message_version )
                 ):
                     individual_application_state = EsPredictorState.individual_application_state
                     application_state = individual_application_state[application_name]
