@@ -192,7 +192,7 @@ def update_prediction_time(epoch_start,prediction_horizon,maximum_time_for_predi
 
 def calculate_and_publish_predictions(application_state,maximum_time_required_for_prediction):
     start_forecasting = application_state.start_forecasting
-
+    application_name = application_state.application_name
     while start_forecasting:
         print_with_time("Using " + EsPredictorState.configuration_file_location + " for configuration details...")
         application_state.next_prediction_time = update_prediction_time(application_state.epoch_start, application_state.prediction_horizon,maximum_time_required_for_prediction)
@@ -254,8 +254,8 @@ def calculate_and_publish_predictions(application_state,maximum_time_required_fo
                         for publisher in EsPredictorState.broker_publishers:
                             #if publisher.address=="eu.nebulouscloud.monitoring.preliminary_predicted.exponentialsmoothing"+attribute:
 
-                            if publisher.key=="publisher_"+attribute:
-                                publisher.send(prediction_message_body)
+                            if publisher.key=="publisher_"+application_name+"-"+attribute:
+                                publisher.send(prediction_message_body,application_name)
 
 
                         #State.connection.send_to_topic('intermediate_prediction.%s.%s' % (id, attribute), prediction_message_body)
@@ -303,7 +303,7 @@ class ConsumerHandler(Handler):
         address = address.replace("topic://"+EsPredictorState.GENERAL_TOPIC_PREFIX,"")
         if (address).startswith(EsPredictorState.MONITORING_DATA_PREFIX):
             address = address.replace(EsPredictorState.MONITORING_DATA_PREFIX, "", 1)
-
+            
             logging.info("New monitoring data arrived at topic "+address)
             if address == 'metric_list':
                 application_name = body["name"]
