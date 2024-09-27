@@ -26,7 +26,7 @@ from runtime.utilities.Utilities import Utilities
 print_with_time = Utilities.print_with_time
 
 
-def sanitize_prediction_statistics(prediction_confidence_interval, prediction_value, metric_name, application_state):
+def sanitize_prediction_statistics(prediction_confidence_interval, prediction_value, metric_name, lower_bound_value, upper_bound_value):
 
     print_with_time("Inside the sanitization process with an interval of  " + prediction_confidence_interval +" and a prediction of " + str(prediction_value))
     lower_value_prediction_confidence_interval = float(prediction_confidence_interval.split(",")[0])
@@ -36,76 +36,79 @@ def sanitize_prediction_statistics(prediction_confidence_interval, prediction_va
         print_with_time("There is an issue with the application name"+application_name+" not existing in individual application states")
         return prediction_confidence_interval,prediction_value_produced"""
 
-    lower_bound_value = application_state.lower_bound_value
-    upper_bound_value = application_state.upper_bound_value
+    #lower_bound_value = application_state.lower_bound_value
+    #upper_bound_value = application_state.upper_bound_value
 
-    print("Lower_bound_value is "+str(lower_bound_value))
     confidence_interval_modified = False
     new_prediction_confidence_interval = prediction_confidence_interval
-    if (not (metric_name in lower_bound_value)) or (not (metric_name in upper_bound_value)):
+    if ((lower_bound_value is None) and (upper_bound_value is None)):
         print_with_time(f"Lower value is unmodified - {lower_value_prediction_confidence_interval} and upper value is unmodified - {upper_value_prediction_confidence_interval}")
         return new_prediction_confidence_interval,prediction_value
-
-    if (lower_value_prediction_confidence_interval < lower_bound_value[metric_name]):
-        lower_value_prediction_confidence_interval = lower_bound_value[metric_name]
-        confidence_interval_modified = True
-    elif (lower_value_prediction_confidence_interval > upper_bound_value[metric_name]):
-        lower_value_prediction_confidence_interval = upper_bound_value[metric_name]
-        confidence_interval_modified = True
-    if (upper_value_prediction_confidence_interval> upper_bound_value[metric_name]):
-        upper_value_prediction_confidence_interval = upper_bound_value[metric_name]
-        confidence_interval_modified = True
-    elif (upper_value_prediction_confidence_interval < lower_bound_value[metric_name]):
-        upper_value_prediction_confidence_interval = lower_bound_value[metric_name]
-        confidence_interval_modified = True
+    elif (lower_bound_value is not None):
+        if (upper_value_prediction_confidence_interval < lower_bound_value[metric_name]):
+            upper_value_prediction_confidence_interval = lower_bound_value[metric_name]
+            lower_value_prediction_confidence_interval = lower_bound_value[metric_name]
+            confidence_interval_modified = True
+        elif (lower_value_prediction_confidence_interval < lower_bound_value):
+            lower_value_prediction_confidence_interval = lower_bound_value[metric_name]
+            confidence_interval_modified = True
+    elif (upper_bound_value is not None):       
+        if (lower_value_prediction_confidence_interval > upper_bound_value[metric_name]):
+            lower_value_prediction_confidence_interval = upper_bound_value[metric_name]
+            upper_value_prediction_confidence_interval = upper_bound_value[metric_name]
+            confidence_interval_modified = True
+        elif (upper_value_prediction_confidence_interval> upper_bound_value[metric_name]):
+            upper_value_prediction_confidence_interval = upper_bound_value[metric_name]
+            confidence_interval_modified = True
+    
     if confidence_interval_modified:
         new_prediction_confidence_interval = str(lower_value_prediction_confidence_interval)+","+str(upper_value_prediction_confidence_interval)
         print_with_time("The confidence interval "+prediction_confidence_interval+" was modified, becoming "+str(new_prediction_confidence_interval)+", taking into account the values of the metric")
-    if (prediction_value<lower_bound_value[metric_name]):
+    if (prediction_value<lower_bound_value):
         print_with_time("The prediction value of " + str(prediction_value) + " for metric " + metric_name + " was sanitized to " + str(lower_bound_value))
         prediction_value = lower_bound_value
-    elif (prediction_value > upper_bound_value[metric_name]):
+    elif (prediction_value > upper_bound_value):
         print_with_time("The prediction value of " + str(prediction_value) + " for metric " + metric_name + " was sanitized to " + str(upper_bound_value))
         prediction_value = upper_bound_value
 
     return new_prediction_confidence_interval,prediction_value
 
 
-def predict_attribute(application_state, attribute, configuration_file_location,next_prediction_time):
+def predict_attribute(attribute,prediction_data_filename,lower_bound_value,upper_bound_value,next_prediction_time):
 
     prediction_confidence_interval_produced = False
     prediction_value_produced = False
     prediction_valid = False
     #os.chdir(os.path.dirname(configuration_file_location))
-    application_state.prediction_data_filename = application_state.get_prediction_data_filename(configuration_file_location,attribute)
+    
 
     from sys import platform
     if EsPredictorState.testing_prediction_functionality:
         print_with_time("Testing, so output will be based on the horizon setting from the properties file and the last timestamp in the data")
-        print_with_time("Issuing command: Rscript forecasting_real_workload.R "+str(application_state.prediction_data_filename)+" "+attribute)
+        print_with_time("Issuing command: Rscript forecasting_real_workload.R "+str(prediction_data_filename)+" "+attribute)
 
         # Windows
         if platform == "win32":
-            command = ['Rscript', 'forecasting_real_workload.R', application_state.prediction_data_filename, attribute]
+            command = ['Rscript', 'forecasting_real_workload.R', prediction_data_filename, attribute]
         # linux
         elif platform == "linux" or platform == "linux2":
-            command = ["Rscript forecasting_real_workload.R "+str(application_state.prediction_data_filename) + " "+ str(attribute)]
+            command = ["Rscript forecasting_real_workload.R "+str(prediction_data_filename) + " "+ str(attribute)]
         #Choosing the solution of linux
         else:
-            command = ["Rscript forecasting_real_workload.R "+str(application_state.prediction_data_filename) + " "+ str(attribute)]
+            command = ["Rscript forecasting_real_workload.R "+str(prediction_data_filename) + " "+ str(attribute)]
     else:
         print_with_time("The current directory is "+os.path.abspath(os.getcwd()))
-        print_with_time("Issuing command: Rscript forecasting_real_workload.R "+str(application_state.prediction_data_filename)+" "+attribute+" "+next_prediction_time)
+        print_with_time("Issuing command: Rscript forecasting_real_workload.R "+str(prediction_data_filename)+" "+attribute+" "+next_prediction_time)
 
         # Windows
         if platform == "win32":
-            command = ['Rscript', 'forecasting_real_workload.R', application_state.prediction_data_filename, attribute, next_prediction_time]
+            command = ['Rscript', 'forecasting_real_workload.R', prediction_data_filename, attribute, next_prediction_time]
         # Linux
         elif platform == "linux" or platform == "linux2":
-            command = ["Rscript forecasting_real_workload.R "+str(application_state.prediction_data_filename) + " "+ str(attribute)+" "+str(next_prediction_time) + " 2>&1"]
+            command = ["Rscript forecasting_real_workload.R "+str(prediction_data_filename) + " "+ str(attribute)+" "+str(next_prediction_time) + " 2>&1"]
         #Choosing the solution of linux
         else:
-            command = ["Rscript forecasting_real_workload.R "+str(application_state.prediction_data_filename) + " "+ str(attribute)+" "+str(next_prediction_time)]
+            command = ["Rscript forecasting_real_workload.R "+str(prediction_data_filename) + " "+ str(attribute)+" "+str(next_prediction_time)]
 
     process_output = run(command, shell=True, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     if (process_output.stdout==""):
@@ -135,7 +138,7 @@ def predict_attribute(application_state, attribute, configuration_file_location,
         elif (string.startswith("smape:")):
             prediction_smape = string.replace("smape:", "")
     if (prediction_confidence_interval_produced and prediction_value_produced):
-        prediction_confidence_interval,prediction_value = sanitize_prediction_statistics(prediction_confidence_interval,float(prediction_value),attribute,application_state)
+        prediction_confidence_interval,prediction_value = sanitize_prediction_statistics(prediction_confidence_interval,float(prediction_value),attribute,lower_bound_value,upper_bound_value)
         prediction_valid = True
         print_with_time("The prediction for attribute " + attribute + " is " + str(prediction_value)+ " and the confidence interval is "+prediction_confidence_interval)
     else:
@@ -156,16 +159,23 @@ def predict_attributes(application_state,next_prediction_time):
     attributes = application_state.metrics_to_predict
     pool = multiprocessing.Pool(len(attributes))
     print_with_time("Prediction thread pool size set to " + str(len(attributes)))
+    prediction_results = {}
     attribute_predictions = {}
 
     for attribute in attributes:
         print_with_time("Starting " + attribute + " prediction thread")
         start_time = time.time()
-        attribute_predictions[attribute] = pool.apply_async(predict_attribute, args=[application_state,attribute, EsPredictorState.configuration_file_location, str(next_prediction_time)])
+        application_state.prediction_data_filename = application_state.get_prediction_data_filename(EsPredictorState.configuration_file_location,attribute)
+        prediction_results[attribute] = pool.apply_async(predict_attribute, args=[attribute,application_state.prediction_data_filename, application_state.lower_bound_value[attribute],application_state.upper_bound_value[attribute],str(next_prediction_time)]
+         )
         #attribute_predictions[attribute] = pool.apply_async(predict_attribute, args=[attribute, configuration_file_location,str(next_prediction_time)]).get()
 
+    #for attribute in attributes:
+    #    prediction_results[attribute].wait() #wait until the process is finished
+    #pool.close()
+    #pool.join()
     for attribute in attributes:
-        attribute_predictions[attribute] = attribute_predictions[attribute].get() #get the results of the processing
+        attribute_predictions[attribute] = prediction_results[attribute].get() #get the results of the processing
         attribute_predictions[attribute].set_last_prediction_time_needed(int(time.time() - start_time))
         #prediction_time_needed[attribute])
 
@@ -194,7 +204,7 @@ def calculate_and_publish_predictions(application_state,maximum_time_required_fo
     start_forecasting = application_state.start_forecasting
     application_name = application_state.application_name
     while start_forecasting:
-        print_with_time("Using " + EsPredictorState.configuration_file_location + " for configuration details...")
+        print_with_time("Using " + EsPredictorState.configuration_file_location + f" for configuration details related to forecasts of {application_state.application_name}...")
         application_state.next_prediction_time = update_prediction_time(application_state.epoch_start, application_state.prediction_horizon,maximum_time_required_for_prediction)
 
         for attribute in application_state.metrics_to_predict:
@@ -285,8 +295,6 @@ class BootStrap(ConnectorHandler):
     pass
 class ConsumerHandler(Handler):
 
-    prediction_thread = None
-
     def ready(self, context):
         if context.has_publisher('state'):
             context.publishers['state'].starting()
@@ -367,9 +375,19 @@ class ConsumerHandler(Handler):
                         EsPredictorState.individual_application_state[application_name] = ApplicationState(application_name,message_version)
                         application_state = EsPredictorState.individual_application_state[application_name]
 
-                    if (not application_state.start_forecasting) or ((application_state.metrics_to_predict is not None) and (len(application_state.metrics_to_predict)<=len(body["metrics"]))):
+                    if (not application_state.start_forecasting) or ((application_state.metrics_to_predict is not None) and (set(application_state.metrics_to_predict)!=set(body["metrics"]))):
                         application_state.metrics_to_predict = body["metrics"]
                         print_with_time("Received request to start predicting the following metrics: "+ ",".join(application_state.metrics_to_predict)+" for application "+application_name+", proceeding with the prediction process")
+                        if (not application_state.start_forecasting):
+                            #Coarse initialization, needs to be improved with metric_list message
+                            for metric in application_state.metrics_to_predict:
+                                application_state.lower_bound_value[metric] = None
+                                application_state.upper_bound_value[metric] = None
+                        else:
+                            new_metrics = set(body["metrics"]) - set(application_state.metrics_to_predict)
+                            for metric in new_metrics:
+                                application_state.lower_bound_value[metric] = None
+                                application_state.upper_bound_value[metric] = None
                     else:
                         application_state.metrics_to_predict = body["metrics"]
                         print_with_time("Received request to start predicting the following metrics: "+ body["metrics"]+" for application "+application_name+"but it was perceived as a duplicate")
@@ -429,9 +447,9 @@ class ConsumerHandler(Handler):
 
 
                 maximum_time_required_for_prediction = EsPredictorState.prediction_processing_time_safety_margin_seconds #initialization, assuming X seconds processing time to derive a first prediction
-                if ((self.prediction_thread is None) or (not self.prediction_thread.is_alive())):
-                    self.prediction_thread = threading.Thread(target = calculate_and_publish_predictions, args =[application_state,maximum_time_required_for_prediction])
-                    self.prediction_thread.start()
+                if ((EsPredictorState.individual_application_state[application_name].prediction_thread is None) or (not EsPredictorState.individual_application_state[application_name].prediction_thread.is_alive())):
+                    EsPredictorState.individual_application_state[application_name].prediction_thread = threading.Thread(target = calculate_and_publish_predictions, args =[application_state,maximum_time_required_for_prediction])
+                    EsPredictorState.individual_application_state[application_name].prediction_thread.start()
 
                 #waitfor(first period)
 
@@ -447,7 +465,7 @@ class ConsumerHandler(Handler):
                         application_state.metrics_to_predict.remove(metric)
                 if len(application_state.metrics_to_predict)==0:
                     EsPredictorState.individual_application_state[application_name].start_forecasting = False
-                    self.prediction_thread.join()
+                    EsPredictorState[application_name].prediction_thread.join()
 
             else:
                 print_with_time("The address was "+ address +" and did not match metrics_to_predict/test.exponentialsmoothing/start_forecasting.exponentialsmoothing/stop_forecasting.exponentialsmoothing")
