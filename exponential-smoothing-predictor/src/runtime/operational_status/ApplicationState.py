@@ -25,6 +25,7 @@ class ApplicationState:
             path_to_datasets = Utilities.fix_path_ending(path_to_datasets)
             return "" + str(path_to_datasets) + str(self.application_name) + "_"+metric_name+ ".csv"
     def __init__(self,application_name, message_version):
+        self.prediction_thread = None
         self.message_version = message_version
         self.application_name = application_name
         self.influxdb_bucket = EsPredictorState.application_name_prefix+application_name+"_bucket"
