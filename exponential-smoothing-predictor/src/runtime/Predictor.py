@@ -311,8 +311,9 @@ class ConsumerHandler(Handler):
         address = address.replace("topic://"+EsPredictorState.GENERAL_TOPIC_PREFIX,"")
         if (address).startswith(EsPredictorState.MONITORING_DATA_PREFIX):
             address = address.replace(EsPredictorState.MONITORING_DATA_PREFIX, "", 1)
+        
+            logging.debug("New monitoring data arrived at topic "+address)
 
-            logging.info("New monitoring data arrived at topic "+address)
             if address == 'metric_list':
 
                 application_name = body["name"]
