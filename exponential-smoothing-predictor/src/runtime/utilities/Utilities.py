@@ -42,7 +42,7 @@ class Utilities:
             EsPredictorState.influxdb_password = EsPredictorState.configuration_details.get("INFLUXDB_PASSWORD").data
             EsPredictorState.influxdb_org = EsPredictorState.configuration_details.get("INFLUXDB_ORG").data
         #This method accesses influx db to retrieve the most recent metric values.
-            Utilities.print_with_time("The configuration effective currently is the following\n "+Utilities.get_fields_and_values(EsPredictorState))
+            logging.debug("The configuration effective currently is the following\n "+Utilities.get_fields_and_values(EsPredictorState))
 
     @staticmethod
     def update_influxdb_organization_id():
@@ -54,7 +54,7 @@ class Utilities:
         # Find the organization by name and print its ID
         for org in organizations:
             if org.name == EsPredictorState.influxdb_organization:
-                logging.info(f"Organization Name: {org.name}, ID: {org.id}")
+                logging.debug(f"Organization Name: {org.name}, ID: {org.id}")
                 EsPredictorState.influxdb_organization_id = org.id
                 break
     @staticmethod

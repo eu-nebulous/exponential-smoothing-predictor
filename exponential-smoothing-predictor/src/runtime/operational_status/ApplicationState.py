@@ -51,14 +51,14 @@ class ApplicationState:
 
         response = requests.get(list_bucket_url, headers=headers)
 
-        logging.info("The response for listing a possibly existing bucket is "+str(response.status_code)+" for application "+application_name)
+        logging.debug("The response for listing a possibly existing bucket is "+str(response.status_code)+" for application "+application_name)
         if ((response.status_code==200) and ("buckets" in response.json()) and (len(response.json()["buckets"])>0)):
-                logging.info("The bucket already existed for the particular application, skipping its creation...")
+                logging.debug("The bucket already existed for the particular application, skipping its creation...")
         else:
-            logging.info("The response in the request to list a bucket is "+str(response.json()))
+            logging.debug("The response in the request to list a bucket is "+str(response.json()))
             logging.info("The bucket did not exist for the particular application, creation in process...")
             response = requests.post(create_bucket_url, headers=headers, data=json.dumps(data))
-            logging.info("The response for creating a new bucket is "+str(response.status_code))
+            logging.debug("The response for creating a new bucket is "+str(response.status_code))
         self.start_forecasting = False  # Whether the component should start (or keep on) forecasting
         self.prediction_data_filename = application_name+".csv"
         self.dataset_file_name = "exponential_smoothing_dataset_"+application_name+".csv"
@@ -83,9 +83,9 @@ class ApplicationState:
                 print_data_from_db = True
                 query_string = 'from (bucket: "'+self.influxdb_bucket+'")  |> range(start:-'+time_interval_to_get_data_for+')  |> filter(fn: (r) => r["_measurement"] == "'+metric_name+'")'
                 influx_connector = InfluxDBConnector()
-                logging.info("performing query for application with bucket "+str(self.influxdb_bucket))
-                logging.info("The body of the query is "+query_string)
-                logging.info("The configuration of the client is "+Utilities.get_fields_and_values(influx_connector))
+                logging.debug("performing query for application with bucket "+str(self.influxdb_bucket))
+                logging.debug("The body of the query is "+query_string)
+                logging.debug("The configuration of the client is "+Utilities.get_fields_and_values(influx_connector))
                 current_time = time.time()
                 result = influx_connector.client.query_api().query(query_string, EsPredictorState.influxdb_organization)
                 elapsed_time = time.time()-current_time
@@ -93,7 +93,7 @@ class ApplicationState:
                 if len(result)>0:
                     logging.info(f"Performed query to the database, it took "+str(elapsed_time) + f" seconds to receive {len(result[0].records)} entries (from the first and possibly only table returned). Now logging to {prediction_dataset_filename}")
                 else:
-                    logging.info("No records returned from database")
+                    logging.warning("No records returned from database")
                 #print(result.to_values())
                 with open(prediction_dataset_filename, 'w') as file:
                     for table in result:

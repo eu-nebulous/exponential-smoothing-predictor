@@ -45,20 +45,20 @@ def sanitize_prediction_statistics(prediction_confidence_interval, prediction_va
         print_with_time(f"Lower value is unmodified - {lower_value_prediction_confidence_interval} and upper value is unmodified - {upper_value_prediction_confidence_interval}")
         return new_prediction_confidence_interval,prediction_value
     elif (lower_bound_value is not None):
-        if (upper_value_prediction_confidence_interval < lower_bound_value[metric_name]):
-            upper_value_prediction_confidence_interval = lower_bound_value[metric_name]
-            lower_value_prediction_confidence_interval = lower_bound_value[metric_name]
+        if (upper_value_prediction_confidence_interval < lower_bound_value):
+            upper_value_prediction_confidence_interval = lower_bound_value
+            lower_value_prediction_confidence_interval = lower_bound_value
             confidence_interval_modified = True
         elif (lower_value_prediction_confidence_interval < lower_bound_value):
-            lower_value_prediction_confidence_interval = lower_bound_value[metric_name]
+            lower_value_prediction_confidence_interval = lower_bound_value
             confidence_interval_modified = True
     elif (upper_bound_value is not None):       
-        if (lower_value_prediction_confidence_interval > upper_bound_value[metric_name]):
-            lower_value_prediction_confidence_interval = upper_bound_value[metric_name]
-            upper_value_prediction_confidence_interval = upper_bound_value[metric_name]
+        if (lower_value_prediction_confidence_interval > upper_bound_value):
+            lower_value_prediction_confidence_interval = upper_bound_value
+            upper_value_prediction_confidence_interval = upper_bound_value
             confidence_interval_modified = True
-        elif (upper_value_prediction_confidence_interval> upper_bound_value[metric_name]):
-            upper_value_prediction_confidence_interval = upper_bound_value[metric_name]
+        elif (upper_value_prediction_confidence_interval> upper_bound_value):
+            upper_value_prediction_confidence_interval = upper_bound_value
             confidence_interval_modified = True
     
     if confidence_interval_modified:
@@ -112,7 +112,7 @@ def predict_attribute(attribute,prediction_data_filename,lower_bound_value,upper
 
     process_output = run(command, shell=True, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     if (process_output.stdout==""):
-        logging.info("Empty output from R predictions - the error output is the following:")
+        logging.error("Empty output from R predictions - the error output is the following:")
         print(process_output.stderr) #There was an error during the calculation of the predicted value
 
     process_output_string_list = process_output.stdout.replace("[1] ", "").replace("\"", "").split()
@@ -140,16 +140,16 @@ def predict_attribute(attribute,prediction_data_filename,lower_bound_value,upper
     if (prediction_confidence_interval_produced and prediction_value_produced):
         prediction_confidence_interval,prediction_value = sanitize_prediction_statistics(prediction_confidence_interval,float(prediction_value),attribute,lower_bound_value,upper_bound_value)
         prediction_valid = True
-        print_with_time("The prediction for attribute " + attribute + " is " + str(prediction_value)+ " and the confidence interval is "+prediction_confidence_interval)
+        print_with_time("The prediction for attribute " + attribute + " is " + str(prediction_value)+ " and the confidence interval is "+prediction_confidence_interval + " for prediction time "+str(next_prediction_time))
     else:
-        logging.info("There was an error during the calculation of the predicted value for "+str(attribute)+", the error log follows")
-        logging.info(process_output.stdout)
-        logging.info("\n")
-        logging.info("----------------------")
-        logging.info("Printing stderr")
-        logging.info("----------------------")
-        logging.info("\n")
-        logging.info(process_output.stderr)
+        logging.error("There was an error during the calculation of the predicted value for "+str(attribute)+", the error log follows")
+        logging.error(process_output.stdout)
+        logging.error("\n")
+        logging.error("----------------------")
+        logging.error("Printing stderr")
+        logging.error("----------------------")
+        logging.error("\n")
+        logging.error(process_output.stderr)
 
     output_prediction = Prediction(prediction_value, prediction_confidence_interval,prediction_valid,prediction_mae,prediction_mse,prediction_mape,prediction_smape)
     return output_prediction
@@ -312,7 +312,7 @@ class ConsumerHandler(Handler):
         if (address).startswith(EsPredictorState.MONITORING_DATA_PREFIX):
             address = address.replace(EsPredictorState.MONITORING_DATA_PREFIX, "", 1)
             
-            logging.info("New monitoring data arrived at topic "+address)
+            logging.debug("New monitoring data arrived at topic "+address)
             if address == 'metric_list':
 
                 application_name = body["name"]
@@ -365,7 +365,7 @@ class ConsumerHandler(Handler):
                     application_name = body["name"]
                     message_version = 0
                     if (not "version" in body):
-                        logging.info("There was an issue in finding the message version in the body of the start forecasting message, assuming it is 1")
+                        logging.debug("There was an issue in finding the message version in the body of the start forecasting message, assuming it is 1")
                         message_version = 1
                     else:
                         message_version = body["version"]
@@ -493,7 +493,7 @@ def main():
     Utilities.update_influxdb_organization_id()
 # Subscribe to retrieve the metrics which should be used
 
-
+    logging.basicConfig(level=logging.info)
     id = "exponentialsmoothing"
     EsPredictorState.disconnected = True
 
