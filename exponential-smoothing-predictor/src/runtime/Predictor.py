@@ -494,7 +494,7 @@ def main():
     Utilities.update_influxdb_organization_id()
 # Subscribe to retrieve the metrics which should be used
 
-    logging.basicConfig(level=logging.info)
+    logging.basicConfig(level=logging.INFO)
     id = "exponentialsmoothing"
     EsPredictorState.disconnected = True
 
