@@ -459,12 +459,12 @@ class ConsumerHandler(Handler):
                 application_name = body["name"]
                 application_state = EsPredictorState.individual_application_state[application_name]
                 print_with_time("Received message to stop predicting some of the metrics")
-                metrics_to_remove = json.loads(body)["metrics"]
+                metrics_to_remove = body["metrics"] 
                 for metric in metrics_to_remove:
                     if (application_state.metrics_to_predict.__contains__(metric)):
                         print_with_time("Stopping generating predictions for metric "+metric)
                         application_state.metrics_to_predict.remove(metric)
-                if len(application_state.metrics_to_predict)==0:
+                if (len(metrics_to_remove)==0 or len(application_state.metrics_to_predict)==0):
                     EsPredictorState.individual_application_state[application_name].start_forecasting = False
                     EsPredictorState[application_name].prediction_thread.join()
 
