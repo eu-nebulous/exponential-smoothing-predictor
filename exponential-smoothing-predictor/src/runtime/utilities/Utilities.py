@@ -20,7 +20,9 @@ class Utilities:
     @staticmethod
     def print_with_time(x):
         now = datetime.datetime.now()
-        print("["+now.strftime('%Y-%m-%d %H:%M:%S')+"] "+str(x))
+        string_to_print = "["+now.strftime('%Y-%m-%d %H:%M:%S')+"] "+str(x)
+        print(string_to_print)
+        return string_to_print
 
     @staticmethod
     def load_configuration():

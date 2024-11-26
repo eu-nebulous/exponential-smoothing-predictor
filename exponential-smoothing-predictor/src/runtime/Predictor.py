@@ -272,8 +272,8 @@ def calculate_and_publish_predictions(application_state,maximum_time_required_fo
 
                         #State.connection.send_to_topic('training_models',training_models_message_body)
                         message_not_sent = False
-                        print_with_time("Successfully sent prediction message for %s to topic eu.nebulouscloud.preliminary_predicted.%s.%s:\n\n%s\n\n" % (attribute, EsPredictorState.forecaster_name, attribute, prediction_message_body))
-                    except ConnectionError as exception:
+                        print_with_time("Successfully sent prediction message for "+str(attribute)+" to topic "+EsPredictorState.get_prediction_publishing_topic(attribute)+":\n\n%s\n\n" % (prediction_message_body))
+                    except Exception as exception:
                         #State.connection.disconnect()
                         #State.connection = messaging.morphemic.Connection('admin', 'admin')
                         #State.connection.connect()
@@ -471,6 +471,22 @@ class ConsumerHandler(Handler):
             else:
                 print_with_time("The address was "+ address +" and did not match metrics_to_predict/test.exponentialsmoothing/start_forecasting.exponentialsmoothing/stop_forecasting.exponentialsmoothing")
                 #        logging.info(f"Received {key} => {address}")
+        
+        elif (address).startswith(EsPredictorState.COMPONENT_STATE_PREFIX):
+        
+            import os      
+            # Specify the directory and filename
+            directory = "/home"
+            filename = "is_alive.txt"
+            
+            # Create the file
+            with open(os.path.join(directory, filename), "w") as f:
+                current_message = print_with_time(f"Liveness probe received at {address}")
+                f.write(current_message)
+            
+            #print(f"Liveness probe file created at {directory}/{filename}")
+        
+
         else:
             print_with_time("Received message "+body+" but could not handle it")
 def get_dataset_file(attribute):
@@ -508,15 +524,26 @@ def main():
 
     while True:
         topics_to_subscribe = ["eu.nebulouscloud.monitoring.metric_list","eu.nebulouscloud.monitoring.realtime.>","eu.nebulouscloud.forecasting.start_forecasting.exponentialsmoothing","eu.nebulouscloud.forecasting.stop_forecasting.exponentialsmoothing"]
+        
+        topics_to_publish = ["eu.nebulouscloud.state.exponentialsmoothing.isalive"]
+
         current_consumers = []
+        current_publishers = []
 
         for topic in topics_to_subscribe:
-            current_consumer = core.consumer.Consumer(key='monitoring_'+topic,address=topic,handler=ConsumerHandler(), topic=True,fqdn=True)
+            current_consumer = core.consumer.Consumer(key='exsmoothing_forecasting_'+topic,address=topic,handler=ConsumerHandler(), topic=True,fqdn=True)
             EsPredictorState.broker_consumers.append(current_consumer)
             current_consumers.append(current_consumer)
+            
+        for topic in topics_to_publish:
+            current_publisher = core.publisher.Publisher(key='exsmoothing_forecasting_'+topic,address=topic, topic=True,fqdn=True)
+            EsPredictorState.broker_publishers.append(current_publisher)
+            current_publishers.append(current_publisher)
+            
         EsPredictorState.subscribing_connector = connector.EXN(EsPredictorState.forecaster_name, handler=BootStrap(),
                                                                #consumers=list(State.broker_consumers),
                                                                consumers=EsPredictorState.broker_consumers,
+                                                               publishers=current_publishers,
                                                                url=EsPredictorState.broker_address,
                                                                port=EsPredictorState.broker_port,
                                                                username=EsPredictorState.broker_username,
