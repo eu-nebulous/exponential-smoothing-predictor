@@ -22,10 +22,14 @@ class EsPredictorState:
     """
     Fail-safe default values introduced below
     """
+    preliminary_prediction_publishing_topic_prefix = "eu.nebulouscloud.preliminary_predicted."
+    prediction_publishing_topic_prefix = "eu.nebulouscloud.monitoring.predicted."
+    publish_predictions_as_preliminary = True
     application_name_prefix = "nebulous_"
     GENERAL_TOPIC_PREFIX = "eu.nebulouscloud."
     MONITORING_DATA_PREFIX = "monitoring."
     FORECASTING_CONTROL_PREFIX = "forecasting."
+    COMPONENT_STATE_PREFIX = "state."
 
     #Used to create the dataset from the InfluxDB
     influxdb_organization = "my-org"
@@ -64,4 +68,10 @@ class EsPredictorState:
     def check_stale_connection():
         return (not EsPredictorState.subscribing_connector)
 
-
+    @staticmethod
+    def get_prediction_publishing_topic(metric_name):
+        if EsPredictorState.publish_predictions_as_preliminary:
+            return EsPredictorState.preliminary_prediction_publishing_topic_prefix+EsPredictorState.forecaster_name+"."+metric_name
+            #'eu.nebulouscloud.preliminary_predicted.'+EsPredictorState.forecaster_name+"."+metric_name
+        else:
+            return EsPredictorState.prediction_publishing_topic_prefix+metric_name
