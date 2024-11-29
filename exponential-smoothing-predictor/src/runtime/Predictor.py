@@ -12,6 +12,8 @@ import os, sys
 import multiprocessing
 import traceback
 from subprocess import PIPE, run
+from threading import Thread
+
 from exn import core
 
 import logging
@@ -292,10 +294,35 @@ def calculate_and_publish_predictions(application_state,maximum_time_required_fo
 
 #class Listener(messaging.listener.MorphemicListener):
 class BootStrap(ConnectorHandler):
-    pass
+    def publish_live_status(self,context,liveness_probe_key):
+        counter = 0
+        while True:
+            counter = counter+1
+            if (counter%3600==1):
+                print_with_time("Sending liveness probe "+str(counter))
+            context.publishers[liveness_probe_key].send(body={
+                'isalive': True
+            })
+            time.sleep(1)
+    def ready (self, context):
+        liveness_probe_key = 'exsmoothing_forecasting_eu.nebulouscloud.state.exponentialsmoothing.isalive'
+        liveness_probe_publisher_exists = context.has_publisher(liveness_probe_key)
+        
+        if liveness_probe_publisher_exists:
+            print_with_time("Starting to send liveness messages")            
+        else:
+            time.sleep(20)
+            liveness_probe_publisher_exists = context.has_publisher('liveness_probe')
+            if (not liveness_probe_publisher_exists):
+                print_with_time('No liveness probe publisher exists. Exiting.')
+                exit(-1)
+        status_publishing_thread  = Thread(target=self.publish_live_status,args=[context,liveness_probe_key])
+        status_publishing_thread.start()
+    
 class ConsumerHandler(Handler):
 
     def ready(self, context):
+        
         if context.has_publisher('state'):
             context.publishers['state'].starting()
             context.publishers['state'].started()
@@ -303,6 +330,7 @@ class ConsumerHandler(Handler):
             context.publishers['state'].stopping()
             context.publishers['state'].stopped()
 
+        print_with_time("Consumer handler ready")
             #context.publishers['publisher_cpu_usage'].send({
             #     'hello': 'world'
             #})
@@ -476,16 +504,16 @@ class ConsumerHandler(Handler):
         
             import os      
             # Specify the directory and filename
-            directory = "/home"
+            from pathlib import Path
+            directory = "/home/r_predictions"
+            Path(directory).mkdir(parents=True, exist_ok=True)
             filename = "is_alive.txt"
             
             # Create the file
             with open(os.path.join(directory, filename), "w") as f:
-                current_message = print_with_time(f"Liveness probe received at {address}")
-                f.write(current_message)
-            
-            #print(f"Liveness probe file created at {directory}/{filename}")
-        
+                current_message = f"Liveness probe received at {address}"
+                #current_message = print_with_time(f"Liveness probe received at {address}")
+                f.write(current_message)        
 
         else:
             print_with_time("Received message "+body+" but could not handle it")
@@ -523,7 +551,8 @@ def main():
     #exit(100)
 
     while True:
-        topics_to_subscribe = ["eu.nebulouscloud.monitoring.metric_list","eu.nebulouscloud.monitoring.realtime.>","eu.nebulouscloud.forecasting.start_forecasting.exponentialsmoothing","eu.nebulouscloud.forecasting.stop_forecasting.exponentialsmoothing"]
+        topics_to_subscribe = ["eu.nebulouscloud.monitoring.metric_list","eu.nebulouscloud.monitoring.realtime.>","eu.nebulouscloud.forecasting.start_forecasting.exponentialsmoothing","eu.nebulouscloud.forecasting.stop_forecasting.exponentialsmoothing",
+          "eu.nebulouscloud.state.exponentialsmoothing.isalive"]
         
         topics_to_publish = ["eu.nebulouscloud.state.exponentialsmoothing.isalive"]
 
@@ -543,7 +572,7 @@ def main():
         EsPredictorState.subscribing_connector = connector.EXN(EsPredictorState.forecaster_name, handler=BootStrap(),
                                                                #consumers=list(State.broker_consumers),
                                                                consumers=EsPredictorState.broker_consumers,
-                                                               publishers=current_publishers,
+                                                               publishers=EsPredictorState.broker_publishers,
                                                                url=EsPredictorState.broker_address,
                                                                port=EsPredictorState.broker_port,
                                                                username=EsPredictorState.broker_username,
