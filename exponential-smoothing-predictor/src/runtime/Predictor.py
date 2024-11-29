@@ -12,6 +12,8 @@ import os, sys
 import multiprocessing
 import traceback
 from subprocess import PIPE, run
+from threading import Thread
+
 from exn import core
 
 import logging
@@ -272,8 +274,8 @@ def calculate_and_publish_predictions(application_state,maximum_time_required_fo
 
                         #State.connection.send_to_topic('training_models',training_models_message_body)
                         message_not_sent = False
-                        print_with_time("Successfully sent prediction message for %s to topic eu.nebulouscloud.preliminary_predicted.%s.%s:\n\n%s\n\n" % (attribute, EsPredictorState.forecaster_name, attribute, prediction_message_body))
-                    except ConnectionError as exception:
+                        print_with_time("Successfully sent prediction message for "+str(attribute)+" to topic "+EsPredictorState.get_prediction_publishing_topic(attribute)+":\n\n%s\n\n" % (prediction_message_body))
+                    except Exception as exception:
                         #State.connection.disconnect()
                         #State.connection = messaging.morphemic.Connection('admin', 'admin')
                         #State.connection.connect()
@@ -292,10 +294,35 @@ def calculate_and_publish_predictions(application_state,maximum_time_required_fo
 
 #class Listener(messaging.listener.MorphemicListener):
 class BootStrap(ConnectorHandler):
-    pass
+    def publish_live_status(self,context,liveness_probe_key):
+        counter = 0
+        while True:
+            counter = counter+1
+            if (counter%3600==1):
+                print_with_time("Sending liveness probe "+str(counter))
+            context.publishers[liveness_probe_key].send(body={
+                'isalive': True
+            })
+            time.sleep(1)
+    def ready (self, context):
+        liveness_probe_key = 'exsmoothing_forecasting_eu.nebulouscloud.state.exponentialsmoothing.isalive'
+        liveness_probe_publisher_exists = context.has_publisher(liveness_probe_key)
+        
+        if liveness_probe_publisher_exists:
+            print_with_time("Starting to send liveness messages")            
+        else:
+            time.sleep(20)
+            liveness_probe_publisher_exists = context.has_publisher('liveness_probe')
+            if (not liveness_probe_publisher_exists):
+                print_with_time('No liveness probe publisher exists. Exiting.')
+                exit(-1)
+        status_publishing_thread  = Thread(target=self.publish_live_status,args=[context,liveness_probe_key])
+        status_publishing_thread.start()
+    
 class ConsumerHandler(Handler):
 
     def ready(self, context):
+        
         if context.has_publisher('state'):
             context.publishers['state'].starting()
             context.publishers['state'].started()
@@ -303,6 +330,7 @@ class ConsumerHandler(Handler):
             context.publishers['state'].stopping()
             context.publishers['state'].stopped()
 
+        print_with_time("Consumer handler ready")
             #context.publishers['publisher_cpu_usage'].send({
             #     'hello': 'world'
             #})
@@ -459,18 +487,34 @@ class ConsumerHandler(Handler):
                 application_name = body["name"]
                 application_state = EsPredictorState.individual_application_state[application_name]
                 print_with_time("Received message to stop predicting some of the metrics")
-                metrics_to_remove = json.loads(body)["metrics"]
+                metrics_to_remove = body["metrics"] 
                 for metric in metrics_to_remove:
                     if (application_state.metrics_to_predict.__contains__(metric)):
                         print_with_time("Stopping generating predictions for metric "+metric)
                         application_state.metrics_to_predict.remove(metric)
-                if len(application_state.metrics_to_predict)==0:
+                if (len(metrics_to_remove)==0 or len(application_state.metrics_to_predict)==0):
                     EsPredictorState.individual_application_state[application_name].start_forecasting = False
                     EsPredictorState[application_name].prediction_thread.join()
 
             else:
                 print_with_time("The address was "+ address +" and did not match metrics_to_predict/test.exponentialsmoothing/start_forecasting.exponentialsmoothing/stop_forecasting.exponentialsmoothing")
                 #        logging.info(f"Received {key} => {address}")
+        
+        elif (address).startswith(EsPredictorState.COMPONENT_STATE_PREFIX):
+        
+            import os      
+            # Specify the directory and filename
+            from pathlib import Path
+            directory = "/home/r_predictions"
+            Path(directory).mkdir(parents=True, exist_ok=True)
+            filename = "is_alive.txt"
+            
+            # Create the file
+            with open(os.path.join(directory, filename), "w") as f:
+                current_message = f"Liveness probe received at {address}"
+                #current_message = print_with_time(f"Liveness probe received at {address}")
+                f.write(current_message)        
+
         else:
             print_with_time("Received message "+body+" but could not handle it")
 def get_dataset_file(attribute):
@@ -494,7 +538,7 @@ def main():
     Utilities.update_influxdb_organization_id()
 # Subscribe to retrieve the metrics which should be used
 
-    logging.basicConfig(level=logging.info)
+    logging.basicConfig(level=logging.INFO)
     id = "exponentialsmoothing"
     EsPredictorState.disconnected = True
 
@@ -507,16 +551,28 @@ def main():
     #exit(100)
 
     while True:
-        topics_to_subscribe = ["eu.nebulouscloud.monitoring.metric_list","eu.nebulouscloud.monitoring.realtime.>","eu.nebulouscloud.forecasting.start_forecasting.exponentialsmoothing","eu.nebulouscloud.forecasting.stop_forecasting.exponentialsmoothing"]
+        topics_to_subscribe = ["eu.nebulouscloud.monitoring.metric_list","eu.nebulouscloud.monitoring.realtime.>","eu.nebulouscloud.forecasting.start_forecasting.exponentialsmoothing","eu.nebulouscloud.forecasting.stop_forecasting.exponentialsmoothing",
+          "eu.nebulouscloud.state.exponentialsmoothing.isalive"]
+        
+        topics_to_publish = ["eu.nebulouscloud.state.exponentialsmoothing.isalive"]
+
         current_consumers = []
+        current_publishers = []
 
         for topic in topics_to_subscribe:
-            current_consumer = core.consumer.Consumer(key='monitoring_'+topic,address=topic,handler=ConsumerHandler(), topic=True,fqdn=True)
+            current_consumer = core.consumer.Consumer(key='exsmoothing_forecasting_'+topic,address=topic,handler=ConsumerHandler(), topic=True,fqdn=True)
             EsPredictorState.broker_consumers.append(current_consumer)
             current_consumers.append(current_consumer)
+            
+        for topic in topics_to_publish:
+            current_publisher = core.publisher.Publisher(key='exsmoothing_forecasting_'+topic,address=topic, topic=True,fqdn=True)
+            EsPredictorState.broker_publishers.append(current_publisher)
+            current_publishers.append(current_publisher)
+            
         EsPredictorState.subscribing_connector = connector.EXN(EsPredictorState.forecaster_name, handler=BootStrap(),
                                                                #consumers=list(State.broker_consumers),
                                                                consumers=EsPredictorState.broker_consumers,
+                                                               publishers=EsPredictorState.broker_publishers,
                                                                url=EsPredictorState.broker_address,
                                                                port=EsPredictorState.broker_port,
                                                                username=EsPredictorState.broker_username,
