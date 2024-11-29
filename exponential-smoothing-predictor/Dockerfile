@@ -18,7 +18,7 @@ FROM python:3.11-slim
 RUN mkdir -p /home/r_predictions
 
 #RUN apt-get update
-ENV LOG_FILE=exponential_smoothing.log
+ENV LOG_FILE=/home/r_predictions/exponential_smoothing.log
 ENV TZ=Europe/Athens
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 ARG DEBIAN_FRONTEND=noninteractive
