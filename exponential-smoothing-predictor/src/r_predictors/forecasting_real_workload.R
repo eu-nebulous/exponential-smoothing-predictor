@@ -115,6 +115,9 @@ if (length(data_to_process[,attribute_to_predict])>0){
   print("No valid data points remained after enforcing the number_of_days_to_use_data_from configuration option. This may mean that you are trying to predict using realtime mode, using data points older than the number of days specified in the number_of_days_to_use_data_from configuration option")
   stop()
 }
+#sapply(data_to_process[, time_field_name], is.na)
+#anytime(data_to_process[, time_field_name], format = "%Y-%m-%d %H:%M:%OS")
+
 #Fail-safe default
 df1 <- xts(as.numeric(data_to_process[,attribute_to_predict]),anytime(data_to_process[,time_field_name]))
 date_time_init <- anytime(data_to_process[,time_field_name])

@@ -9,6 +9,7 @@ import pathlib
 import datetime
 import logging,os
 import json
+from jproperties import PropertyTuple
 from influxdb_client import InfluxDBClient
 
 from runtime.operational_status.EsPredictorState import EsPredictorState
@@ -27,8 +28,11 @@ class Utilities:
     @staticmethod
     def load_configuration():
         with open(EsPredictorState.configuration_file_location, 'rb') as config_file:
-            EsPredictorState.configuration_details.load(config_file)
-            #prediction_horizon = configuration_details.get("prediction_horizon")
+            EsPredictorState.publish_predictions_as_preliminary = os.environ.get('PUBLISH_PRELIMINARY',EsPredictorState.publish_predictions_as_preliminary)
+            EsPredictorState.configuration_details.load(config_file)            
+
+            EsPredictorState.publish_predictions_as_preliminary = eval(str(EsPredictorState.configuration_details.get("publish_preliminary_predictions",PropertyTuple(data=EsPredictorState.publish_predictions_as_preliminary,meta={})).data))
+        #prediction_horizon = configuration_details.get("prediction_horizon")
             EsPredictorState.number_of_days_to_use_data_from = int(EsPredictorState.configuration_details.get("number_of_days_to_use_data_from").data)
             EsPredictorState.prediction_processing_time_safety_margin_seconds = int(EsPredictorState.configuration_details.get("prediction_processing_time_safety_margin_seconds").data)
             EsPredictorState.testing_prediction_functionality = EsPredictorState.configuration_details.get("testing_prediction_functionality").data.lower() == "true"
