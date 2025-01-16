@@ -239,7 +239,13 @@ def calculate_and_publish_predictions(application_state,maximum_time_required_fo
             for attribute in application_state.metrics_to_predict:
                 if(not prediction[attribute].prediction_valid):
                     #continue was here, to continue while loop, replaced by break
-                    break
+                    logging.warning(f"There was an invalid prediction for attribute {attribute}")
+                    try:
+                        logging.warning(f"The prediction value was {prediction[attribute].value} - breaking")
+                    except Exception as e:
+                        logging.error(str(e))
+                        
+                    continue
                 if (EsPredictorState.disconnected or EsPredictorState.check_stale_connection()):
                     logging.info("Possible problem due to disconnection or a stale connection")
                     #State.connection.connect()
