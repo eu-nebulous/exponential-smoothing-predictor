@@ -93,7 +93,7 @@ class ApplicationState:
                 if len(result)>0:
                     logging.info(f"Performed query to the database, it took "+str(elapsed_time) + f" seconds to receive {len(result[0].records)} entries (from the first and possibly only table returned). Now logging to {prediction_dataset_filename}")
                 else:
-                    logging.warning("No records returned from database")
+                    logging.warning(f"No records returned from database for metric {metric_name} in bucket {self.influxdb_bucket}")
                 #print(result.to_values())
                 with open(prediction_dataset_filename, 'w') as file:
                     for table in result:
