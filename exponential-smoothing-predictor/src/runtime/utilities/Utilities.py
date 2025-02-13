@@ -28,7 +28,7 @@ class Utilities:
     @staticmethod
     def load_configuration():
         with open(EsPredictorState.configuration_file_location, 'rb') as config_file:
-            EsPredictorState.publish_predictions_as_preliminary = os.environ.get('PUBLISH_PRELIMINARY',EsPredictorState.publish_predictions_as_preliminary)
+            EsPredictorState.publish_predictions_as_preliminary = os.environ.get('PUBLISH_PRELIMINARY',EsPredictorState.publish_predictions_as_preliminary).lower() in ('true', '1', 't')
             EsPredictorState.configuration_details.load(config_file)            
 
             EsPredictorState.publish_predictions_as_preliminary = eval(str(EsPredictorState.configuration_details.get("publish_preliminary_predictions",PropertyTuple(data=EsPredictorState.publish_predictions_as_preliminary,meta={})).data))
