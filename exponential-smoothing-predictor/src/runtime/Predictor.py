@@ -140,9 +140,12 @@ def predict_attribute(attribute,prediction_data_filename,lower_bound_value,upper
         elif (string.startswith("smape:")):
             prediction_smape = string.replace("smape:", "")
     if (prediction_confidence_interval_produced and prediction_value_produced):
-        prediction_confidence_interval,prediction_value = sanitize_prediction_statistics(prediction_confidence_interval,float(prediction_value),attribute,lower_bound_value,upper_bound_value)
-        prediction_valid = True
-        print_with_time("The prediction for attribute " + attribute + " is " + str(prediction_value)+ " and the confidence interval is "+prediction_confidence_interval + " for prediction time "+str(next_prediction_time))
+        try:
+            prediction_confidence_interval,prediction_value = sanitize_prediction_statistics(prediction_confidence_interval,float(prediction_value),attribute,lower_bound_value,upper_bound_value)
+            prediction_valid = True
+            print_with_time("The prediction for attribute " + attribute + " is " + str(prediction_value)+ " and the confidence interval is "+prediction_confidence_interval + " for prediction time "+str(next_prediction_time))
+        except Exception as e:
+            logging.error(e)
     else:
         logging.error("There was an error during the calculation of the predicted value for "+str(attribute)+", the error log follows")
         logging.error(process_output.stdout)
@@ -152,7 +155,7 @@ def predict_attribute(attribute,prediction_data_filename,lower_bound_value,upper
         logging.error("----------------------")
         logging.error("\n")
         logging.error(process_output.stderr)
-
+    
     output_prediction = Prediction(prediction_value, prediction_confidence_interval,prediction_valid,prediction_mae,prediction_mse,prediction_mape,prediction_smape)
     return output_prediction
 

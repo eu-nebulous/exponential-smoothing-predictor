@@ -22,7 +22,7 @@ class EsPredictorState:
     """
     Fail-safe default values introduced below
     """
-    preliminary_prediction_publishing_topic_prefix = "eu.nebulouscloud.preliminary_predicted."
+    preliminary_prediction_publishing_topic_prefix = "eu.nebulouscloud.monitoring.preliminary_predicted."
     prediction_publishing_topic_prefix = "eu.nebulouscloud.monitoring.predicted."
     publish_predictions_as_preliminary = True
     application_name_prefix = "nebulous_"
