@@ -14,6 +14,8 @@ import traceback
 from subprocess import PIPE, run
 from threading import Thread
 
+from proton import Message
+
 from exn import core
 
 import logging
@@ -26,6 +28,8 @@ from runtime.operational_status.EsPredictorState import EsPredictorState
 from runtime.utilities.PredictionPublisher import PredictionPublisher
 from runtime.utilities.Utilities import Utilities
 print_with_time = Utilities.print_with_time
+
+_logger = logging.getLogger(__name__)
 
 
 def sanitize_prediction_statistics(prediction_confidence_interval, prediction_value, metric_name, lower_bound_value, upper_bound_value):
@@ -46,7 +50,7 @@ def sanitize_prediction_statistics(prediction_confidence_interval, prediction_va
     if ((lower_bound_value is None) and (upper_bound_value is None)):
         print_with_time(f"Lower value is unmodified - {lower_value_prediction_confidence_interval} and upper value is unmodified - {upper_value_prediction_confidence_interval}")
         return new_prediction_confidence_interval,prediction_value
-    elif (lower_bound_value is not None):
+    if (lower_bound_value is not None):
         if (upper_value_prediction_confidence_interval < lower_bound_value):
             upper_value_prediction_confidence_interval = lower_bound_value
             lower_value_prediction_confidence_interval = lower_bound_value
@@ -54,7 +58,7 @@ def sanitize_prediction_statistics(prediction_confidence_interval, prediction_va
         elif (lower_value_prediction_confidence_interval < lower_bound_value):
             lower_value_prediction_confidence_interval = lower_bound_value
             confidence_interval_modified = True
-    elif (upper_bound_value is not None):       
+    if (upper_bound_value is not None):       
         if (lower_value_prediction_confidence_interval > upper_bound_value):
             lower_value_prediction_confidence_interval = upper_bound_value
             upper_value_prediction_confidence_interval = upper_bound_value
@@ -144,6 +148,7 @@ def predict_attribute(attribute,prediction_data_filename,lower_bound_value,upper
             prediction_confidence_interval,prediction_value = sanitize_prediction_statistics(prediction_confidence_interval,float(prediction_value),attribute,lower_bound_value,upper_bound_value)
             prediction_valid = True
             print_with_time("The prediction for attribute " + attribute + " is " + str(prediction_value)+ " and the confidence interval is "+prediction_confidence_interval + " for prediction time "+str(next_prediction_time))
+            _logger.info("The prediction for attribute " + attribute + " is " + str(prediction_value)+ " and the confidence interval is "+prediction_confidence_interval +  " for prediction time "+str(next_prediction_time))
         except Exception as e:
             logging.error(e)
     else:
@@ -344,7 +349,7 @@ class ConsumerHandler(Handler):
             #     'hello': 'world'
             #})
 
-    def on_message(self, key, address, body, context, **kwargs):
+    def on_message(self, key, address, body, message: Message, context):
         address = address.replace("topic://"+EsPredictorState.GENERAL_TOPIC_PREFIX,"")
         if (address).startswith(EsPredictorState.MONITORING_DATA_PREFIX):
             address = address.replace(EsPredictorState.MONITORING_DATA_PREFIX, "", 1)
@@ -419,16 +424,18 @@ class ConsumerHandler(Handler):
                         if (not application_state.start_forecasting):
                             #Coarse initialization, needs to be improved with metric_list message
                             for metric in application_state.metrics_to_predict:
-                                application_state.lower_bound_value[metric] = None
-                                application_state.upper_bound_value[metric] = None
+                                if (metric not in application_state.lower_bound_value and metric not in application_state.upper_bound_value):
+                                    application_state.lower_bound_value[metric] = None
+                                    application_state.upper_bound_value[metric] = None
                         else:
                             new_metrics = set(body["metrics"]) - set(application_state.metrics_to_predict)
                             for metric in new_metrics:
-                                application_state.lower_bound_value[metric] = None
-                                application_state.upper_bound_value[metric] = None
+                                if (metric not in application_state.lower_bound_value and metric not in application_state.upper_bound_value):
+                                    application_state.lower_bound_value[metric] = None
+                                    application_state.upper_bound_value[metric] = None
                     else:
                         application_state.metrics_to_predict = body["metrics"]
-                        print_with_time("Received request to start predicting the following metrics: "+ body["metrics"]+" for application "+application_name+"but it was perceived as a duplicate")
+                        print_with_time("Received request to start predicting the following metrics: "+ str(body["metrics"])+" for application "+application_name+"but it was perceived as a duplicate")
                         return
                     application_state.broker_publishers = []
                     for metric in application_state.metrics_to_predict:
