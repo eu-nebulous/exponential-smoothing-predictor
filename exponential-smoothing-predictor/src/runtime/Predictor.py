@@ -193,7 +193,6 @@ def predict_attributes(application_state,next_prediction_time):
     pool.join()
     return attribute_predictions
 
-
 def update_prediction_time(epoch_start,prediction_horizon,maximum_time_for_prediction):
     current_time = time.time()
     prediction_intervals_since_epoch = ((current_time - epoch_start)//prediction_horizon)
