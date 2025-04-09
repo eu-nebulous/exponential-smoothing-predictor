@@ -9,7 +9,7 @@ from . import link
 from proton.handlers import MessagingHandler
 
 _logger = logging.getLogger(__name__)
-_logger.setLevel(level=logging.DEBUG)
+_logger.setLevel(level=logging.WARNING)
 
 
 class Consumer(link.Link, MessagingHandler):

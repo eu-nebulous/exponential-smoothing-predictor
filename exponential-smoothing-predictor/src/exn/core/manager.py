@@ -15,7 +15,7 @@ from .handler import Handler
 from .synced_publisher import SyncedPublisher
 
 _logger = logging.getLogger(__name__)
-_logger.setLevel(logging.DEBUG)
+_logger.setLevel(logging.WARNING)
 
 
 class SessionPerConsumer(object):
