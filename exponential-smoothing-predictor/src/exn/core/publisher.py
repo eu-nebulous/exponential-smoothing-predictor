@@ -1,12 +1,13 @@
 import datetime
 import logging
+from logging import WARNING
 
 from proton import Message,AnnotationDict
 
 from . import link
 
 _logger = logging.getLogger(__name__)
-
+_logger.setLevel(WARNING)
 
 class Publisher(link.Link):
 
