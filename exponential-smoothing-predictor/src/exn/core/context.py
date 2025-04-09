@@ -7,7 +7,7 @@ from .manager import Manager
 
 
 _logger = logging.getLogger(__name__)
-_logger.setLevel(logging.WARN)
+_logger.setLevel(logging.WARNING)
 
 class Context:
 
@@ -23,7 +23,6 @@ class Context:
 
     def start(self, manager:Manager, handler):
         self._manager = manager
-
         def on_ready():
             _logger.debug("[context] on_ready" )
             for key,publisher in self.publishers.items():
