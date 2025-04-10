@@ -25,28 +25,33 @@ class Utilities:
         print(string_to_print)
         return string_to_print
 
+    
     @staticmethod
     def load_configuration():
         with open(EsPredictorState.configuration_file_location, 'rb') as config_file:
-            EsPredictorState.publish_predictions_as_preliminary = os.environ.get('PUBLISH_PRELIMINARY',str(EsPredictorState.publish_predictions_as_preliminary)).lower() in ('true', '1', 't')
             EsPredictorState.configuration_details.load(config_file)            
+            def get_config_value(key):
+                """
+                Retrieves a configuration value, prioritizing environment variables over configuration file values.
+                """
+                return os.getenv(key, EsPredictorState.configuration_details.get(key).data)
 
-            EsPredictorState.publish_predictions_as_preliminary = eval(str(EsPredictorState.configuration_details.get("publish_preliminary_predictions",PropertyTuple(data=EsPredictorState.publish_predictions_as_preliminary,meta={})).data))
-        #prediction_horizon = configuration_details.get("prediction_horizon")
-            EsPredictorState.number_of_days_to_use_data_from = int(EsPredictorState.configuration_details.get("number_of_days_to_use_data_from").data)
-            EsPredictorState.prediction_processing_time_safety_margin_seconds = int(EsPredictorState.configuration_details.get("prediction_processing_time_safety_margin_seconds").data)
-            EsPredictorState.testing_prediction_functionality = EsPredictorState.configuration_details.get("testing_prediction_functionality").data.lower() == "true"
-            EsPredictorState.path_to_datasets = EsPredictorState.configuration_details.get("path_to_datasets").data
-            EsPredictorState.broker_address = EsPredictorState.configuration_details.get("broker_address").data
-            EsPredictorState.broker_port = int(EsPredictorState.configuration_details.get("broker_port").data)
-            EsPredictorState.broker_username = EsPredictorState.configuration_details.get("broker_username").data
-            EsPredictorState.broker_password = EsPredictorState.configuration_details.get("broker_password").data
+            EsPredictorState.publish_predictions_as_preliminary =  get_config_value("publish_preliminary_predictions").lower() in ('true', '1', 't')
+            #prediction_horizon = configuration_details.get("prediction_horizon")
+            EsPredictorState.number_of_days_to_use_data_from = int(get_config_value("number_of_days_to_use_data_from"))
+            EsPredictorState.prediction_processing_time_safety_margin_seconds = int(get_config_value("prediction_processing_time_safety_margin_seconds"))
+            EsPredictorState.testing_prediction_functionality = get_config_value("testing_prediction_functionality").lower() in ('true', '1', 't')
+            EsPredictorState.path_to_datasets = get_config_value("path_to_datasets")
+            EsPredictorState.broker_address = get_config_value("broker_address")
+            EsPredictorState.broker_port = int(get_config_value("broker_port"))
+            EsPredictorState.broker_username = get_config_value("broker_username")
+            EsPredictorState.broker_password = get_config_value("broker_password")
 
-            EsPredictorState.influxdb_hostname = EsPredictorState.configuration_details.get("INFLUXDB_HOSTNAME").data
-            EsPredictorState.influxdb_port = int(EsPredictorState.configuration_details.get("INFLUXDB_PORT").data)
-            EsPredictorState.influxdb_username = EsPredictorState.configuration_details.get("INFLUXDB_USERNAME").data
-            EsPredictorState.influxdb_password = EsPredictorState.configuration_details.get("INFLUXDB_PASSWORD").data
-            EsPredictorState.influxdb_org = EsPredictorState.configuration_details.get("INFLUXDB_ORG").data
+            EsPredictorState.influxdb_hostname = get_config_value("INFLUXDB_HOSTNAME")
+            EsPredictorState.influxdb_port = int(get_config_value("INFLUXDB_PORT"))
+            EsPredictorState.influxdb_username = get_config_value("INFLUXDB_USERNAME")
+            EsPredictorState.influxdb_password = get_config_value("INFLUXDB_PASSWORD")
+            EsPredictorState.influxdb_org = get_config_value("INFLUXDB_ORG")
         #This method accesses influx db to retrieve the most recent metric values.
             logging.debug("The configuration effective currently is the following\n "+Utilities.get_fields_and_values(EsPredictorState))
 
