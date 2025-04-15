@@ -17,7 +17,6 @@ from .synced_publisher import SyncedPublisher
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.WARNING)
 
-
 class SessionPerConsumer(object):
     def session(self, connection: Connection) -> Session:
         session = connection.session()
