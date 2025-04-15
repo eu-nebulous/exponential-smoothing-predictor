@@ -36,7 +36,14 @@ class Utilities:
                 """
                 Retrieves a configuration value, prioritizing environment variables over configuration file values.
                 """
-                return os.getenv(key, configuration.get(key).data)
+                if os.getenv(key.upper()) is not None:
+                    return os.getenv(key.upper())
+                elif os.getenv(key) is not None:
+                    return os.getenv(key)
+                elif configuration.get(key) is not None:
+                    return configuration.get(key).data
+                else:
+                    raise Exception(f"Configuration value for {key} not found.")
 
             EsPredictorState.publish_predictions_as_preliminary =  get_config_value("publish_preliminary_predictions").lower() in ('true', '1', 't')
             #prediction_horizon = configuration_details.get("prediction_horizon")
