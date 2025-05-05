@@ -1,7 +1,6 @@
 import logging
 import threading
 import time
-from logging import WARNING
 
 from proton.handlers import MessagingHandler
 from .publisher import Publisher
@@ -9,7 +8,7 @@ import uuid
 
 
 _logger = logging.getLogger(__name__)
-_logger.setLevel(WARNING)
+
 
 class SyncedPublisher(Publisher):
 
