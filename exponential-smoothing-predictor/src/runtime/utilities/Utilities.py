@@ -59,7 +59,7 @@ class Utilities:
             EsPredictorState.influxdb_hostname = get_config_value("INFLUXDB_HOSTNAME")
             EsPredictorState.influxdb_port = int(get_config_value("INFLUXDB_PORT"))
             EsPredictorState.influxdb_username = get_config_value("INFLUXDB_USERNAME")
-            EsPredictorState.influxdb_password = get_config_value("INFLUXDB_PASSWORD")
+            EsPredictorState.influxdb_token = get_config_value("INFLUXDB_TOKEN")
             EsPredictorState.influxdb_org = get_config_value("INFLUXDB_ORG")
         #This method accesses influx db to retrieve the most recent metric values.
             logging.debug("The configuration effective currently is the following\n "+Utilities.get_fields_and_values(EsPredictorState))
