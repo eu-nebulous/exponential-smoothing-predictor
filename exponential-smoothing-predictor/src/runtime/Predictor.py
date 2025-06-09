@@ -17,7 +17,7 @@ from threading import Thread
 from proton import Message
 
 from exn import core
-
+from jproperties import PropertyTuple, Properties
 import logging
 from exn import connector
 from exn.core.handler import Handler
@@ -475,19 +475,17 @@ class ConsumerHandler(Handler):
 
                 with open(EsPredictorState.configuration_file_location, "r+b") as f:
 
-                    EsPredictorState.configuration_details.load(f, "utf-8")
-
-                    # Do stuff with the p object...
-                    initial_seconds_aggregation_value, metadata = EsPredictorState.configuration_details["number_of_seconds_to_aggregate_on"]
-                    initial_seconds_aggregation_value = int(initial_seconds_aggregation_value)
+                    configuration = Properties()
+                    configuration.load(f, "utf-8") 
+                    initial_seconds_aggregation_value = int(configuration.get("number_of_seconds_to_aggregate_on").data)
 
                     if (application_state.prediction_horizon<initial_seconds_aggregation_value):
                         print_with_time("Changing number_of_seconds_to_aggregate_on to "+str(application_state.prediction_horizon)+" from its initial value "+str(initial_seconds_aggregation_value))
-                        EsPredictorState.configuration_details["number_of_seconds_to_aggregate_on"] = str(application_state.prediction_horizon)
+                        configuration.set("number_of_seconds_to_aggregate_on", str(application_state.prediction_horizon))
 
                     f.seek(0)
                     f.truncate(0)
-                    EsPredictorState.configuration_details.store(f, encoding="utf-8")
+                    configuration.store(f, encoding="utf-8")
 
 
                 maximum_time_required_for_prediction = EsPredictorState.prediction_processing_time_safety_margin_seconds #initialization, assuming X seconds processing time to derive a first prediction

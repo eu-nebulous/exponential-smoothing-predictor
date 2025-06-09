@@ -7,7 +7,7 @@
 import threading, logging
 
 from influxdb_client import InfluxDBClient
-from jproperties import Properties
+
 
 class EsPredictorState:
 
@@ -35,7 +35,6 @@ class EsPredictorState:
     influxdb_organization = "my-org"
     influxdb_organization_id = "e0033247dcca0c54"
     influxdb_token = "my-super-secret-auth-token"
-    influxdb_password = "my-password"
     influxdb_username = "my-user"
     influxdb_port = 8086
     influxdb_hostname = "localhost"
@@ -44,7 +43,7 @@ class EsPredictorState:
 
 
     configuration_file_location="exponential-smoothing-predictor/prediction_configuration.properties"
-    configuration_details = Properties()
+
     prediction_processing_time_safety_margin_seconds = 20
     disconnected = True
     disconnection_handler = threading.Condition()

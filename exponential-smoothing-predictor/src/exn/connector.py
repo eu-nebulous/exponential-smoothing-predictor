@@ -77,7 +77,7 @@ class EXN:
             self.context.register_publisher(p)
 
     def start(self):
-        self.context.start(Manager(f"{self.url}:{self.port}"),self.handler)
+        self.context.start(Manager(f"{self.url}:{self.port}", self.username,self.password),self.handler)
 
 
     def stop(self):
