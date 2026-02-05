@@ -15,7 +15,9 @@ from subprocess import PIPE, run
 from threading import Thread
 
 from proton import Message
-
+import os
+# Specify the control_files_directory and filename
+from pathlib import Path
 from exn import core
 from jproperties import PropertyTuple, Properties
 import logging
@@ -35,9 +37,18 @@ _logger = logging.getLogger(__name__)
 def sanitize_prediction_statistics(prediction_confidence_interval, prediction_value, metric_name, lower_bound_value, upper_bound_value):
 
     print_with_time("Inside the sanitization process with an interval of  " + prediction_confidence_interval +" and a prediction of " + str(prediction_value))
-    lower_value_prediction_confidence_interval = float(prediction_confidence_interval.split(",")[0])
-    upper_value_prediction_confidence_interval = float(prediction_confidence_interval.split(",")[1])
-
+    lower_value_prediction_confidence_interval = -sys.maxsize
+    upper_value_prediction_confidence_interval = sys.maxsize
+    
+    try:
+        lower_value_prediction_confidence_interval = float(prediction_confidence_interval.split(",")[0])
+        upper_value_prediction_confidence_interval = float(prediction_confidence_interval.split(",")[1])
+    except Exception as e:
+        if isinstance(lower_value_prediction_confidence_interval,str) or isinstance(upper_value_prediction_confidence_interval, str):
+            _logger.warning("Possibly tried to use a string value for the upper or lower boundary of a confidence interval - the upper and lower values were "+str(upper_value_prediction_confidence_interval)+" "+str(lower_value_prediction_confidence_interval)+" - the relevant exception is "+str(e))
+        else:
+            _logger.warning("Exception while sanitizing the prediction confidence interval having a lower bound of "+str(lower_value_prediction_confidence_interval)+" and a higher value of "+str(upper_value_prediction_confidence_interval)+":  "+str(e))
+            
     """if (not application_name in EsPredictorState.individual_application_state):
         print_with_time("There is an issue with the application name"+application_name+" not existing in individual application states")
         return prediction_confidence_interval,prediction_value_produced"""
@@ -145,6 +156,8 @@ def predict_attribute(attribute,prediction_data_filename,lower_bound_value,upper
             prediction_smape = string.replace("smape:", "")
     if (prediction_confidence_interval_produced and prediction_value_produced):
         try:
+            print_with_time("The upper and lower bounds for the attribute "+attribute+" are "+str(lower_bound_value)+" and "+str(upper_bound_value))
+            _logger.info("The upper and lower bounds for the attribute "+attribute+" are "+str(lower_bound_value)+" and "+str(upper_bound_value))
             prediction_confidence_interval,prediction_value = sanitize_prediction_statistics(prediction_confidence_interval,float(prediction_value),attribute,lower_bound_value,upper_bound_value)
             prediction_valid = True
             print_with_time("The prediction for attribute " + attribute + " is " + str(prediction_value)+ " and the confidence interval is "+prediction_confidence_interval + " for prediction time "+str(next_prediction_time))
@@ -176,6 +189,7 @@ def predict_attributes(application_state,next_prediction_time):
         print_with_time("Starting " + attribute + " prediction thread")
         start_time = time.time()
         application_state.prediction_data_filename = application_state.get_prediction_data_filename(EsPredictorState.configuration_file_location,attribute)
+        logging.warning("Starting attribute prediction with the following upper and lower bounds: " + str(application_state.lower_bound_value[attribute]) + ", "+ str(application_state.upper_bound_value[attribute]))
         prediction_results[attribute] = pool.apply_async(predict_attribute, args=[attribute,application_state.prediction_data_filename, application_state.lower_bound_value[attribute],application_state.upper_bound_value[attribute],str(next_prediction_time)]
          )
         #attribute_predictions[attribute] = pool.apply_async(predict_attribute, args=[attribute, configuration_file_location,str(next_prediction_time)]).get()
@@ -213,98 +227,100 @@ def calculate_and_publish_predictions(application_state,maximum_time_required_fo
     start_forecasting = application_state.start_forecasting
     application_name = application_state.application_name
     while start_forecasting:
-        print_with_time("Using " + EsPredictorState.configuration_file_location + f" for configuration details related to forecasts of {application_state.application_name}...")
-        application_state.next_prediction_time = update_prediction_time(application_state.epoch_start, application_state.prediction_horizon,maximum_time_required_for_prediction)
-
-        for attribute in application_state.metrics_to_predict:
-            if ((application_state.previous_prediction is not None) and (application_state.previous_prediction[attribute] is not None) and (application_state.previous_prediction[attribute].last_prediction_time_needed>maximum_time_required_for_prediction)):
-                maximum_time_required_for_prediction = application_state.previous_prediction[attribute].last_prediction_time_needed
-
-        #Below we subtract one reconfiguration interval, as we cannot send a prediction for a time point later than one prediction_horizon interval
-        wait_time = application_state.next_prediction_time - application_state.prediction_horizon - time.time()
-        print_with_time("Waiting for "+str((int(wait_time*100))/100)+" seconds, until time "+datetime.datetime.fromtimestamp(application_state.next_prediction_time - application_state.prediction_horizon).strftime('%Y-%m-%d %H:%M:%S'))
-        if (wait_time>0):
-            time.sleep(wait_time)
-            if(not start_forecasting):
-                break
-
-        Utilities.load_configuration()
-        application_state.update_monitoring_data()
-        first_prediction = None
-        for prediction_index in range(0, EsPredictorState.total_time_intervals_to_predict):
-            prediction_time = int(application_state.next_prediction_time)+prediction_index*application_state.prediction_horizon
-            try:
-                print_with_time ("Initiating predictions for all metrics for next_prediction_time, which is "+str(application_state.next_prediction_time))
-                prediction = predict_attributes(application_state,prediction_time)
-                if (prediction_time == int(application_state.next_prediction_time)):
-                    first_prediction = prediction
-            except Exception as e:
-                print_with_time("Could not create a prediction for some or all of the metrics for time point " + str(application_state.next_prediction_time) +", proceeding to next prediction time. However, " + str(prediction_index) +" predictions were produced (out of the configured " + str(EsPredictorState.total_time_intervals_to_predict) + "). The encountered exception trace follows:")
-                print(traceback.format_exc())
-                #continue was here, to continue while loop, replaced by break
-                break
+         try:   
+            print_with_time("Using " + EsPredictorState.configuration_file_location + f" for configuration details related to forecasts of {application_state.application_name}...")
+            application_state.next_prediction_time = update_prediction_time(application_state.epoch_start, application_state.prediction_horizon,maximum_time_required_for_prediction)
+    
             for attribute in application_state.metrics_to_predict:
-                if(not prediction[attribute].prediction_valid):
+                if ((application_state.previous_prediction is not None) and (application_state.previous_prediction[attribute] is not None) and (application_state.previous_prediction[attribute].last_prediction_time_needed>maximum_time_required_for_prediction)):
+                    maximum_time_required_for_prediction = application_state.previous_prediction[attribute].last_prediction_time_needed
+    
+            #Below we subtract one reconfiguration interval, as we cannot send a prediction for a time point later than one prediction_horizon interval
+            wait_time = application_state.next_prediction_time - application_state.prediction_horizon - time.time()
+            print_with_time("Waiting for "+str((int(wait_time*100))/100)+" seconds, until time "+datetime.datetime.fromtimestamp(application_state.next_prediction_time - application_state.prediction_horizon).strftime('%Y-%m-%d %H:%M:%S'))
+            if (wait_time>0):
+                time.sleep(wait_time)
+                if(not start_forecasting):
+                    break
+    
+            Utilities.load_configuration()
+            application_state.update_monitoring_data()
+            first_prediction = None
+            for prediction_index in range(0, EsPredictorState.total_time_intervals_to_predict):
+                prediction_time = int(application_state.next_prediction_time)+prediction_index*application_state.prediction_horizon
+                try:
+                    print_with_time ("Initiating predictions for all metrics for next_prediction_time, which is "+str(application_state.next_prediction_time))
+                    prediction = predict_attributes(application_state,prediction_time)
+                    if (prediction_time == int(application_state.next_prediction_time)):
+                        first_prediction = prediction
+                except Exception as e:
+                    print_with_time("Could not create a prediction for some or all of the metrics for time point " + str(application_state.next_prediction_time) +", proceeding to next prediction time. However, " + str(prediction_index) +" predictions were produced (out of the configured " + str(EsPredictorState.total_time_intervals_to_predict) + "). The encountered exception trace follows:")
+                    print(traceback.format_exc())
                     #continue was here, to continue while loop, replaced by break
-                    logging.warning(f"There was an invalid prediction for attribute {attribute}")
-                    try:
-                        logging.warning(f"The prediction value was {prediction[attribute].value} - breaking")
-                    except Exception as e:
-                        logging.error(str(e))
-                        
-                    continue
-                if (EsPredictorState.disconnected or EsPredictorState.check_stale_connection()):
-                    logging.info("Possible problem due to disconnection or a stale connection")
-                    #State.connection.connect()
-                message_not_sent = True
-                current_time = int(time.time())
-                prediction_message_body = {
-                    "metricValue": float(prediction[attribute].value),
-                    "level": 3,
-                    "timestamp": current_time,
-                    "probability": 0.95, #This is the default second parameter of the prediction intervals (first is 80%) created as part of the HoltWinters forecasting mode in R
-                    "confidence_interval": [float(prediction[attribute].lower_confidence_interval_value) ,  float(
-                        prediction[attribute].upper_confidence_interval_value)],
-                    "predictionTime": prediction_time,
-                }
-                training_models_message_body = {
-                    "metrics": application_state.metrics_to_predict,
-                    "forecasting_method": "exponentialsmoothing",
-                    "timestamp": current_time,
-                }
-                while (message_not_sent):
-                    try:
-                        #for publisher in State.broker_publishers:
-                        #    if publisher.
-                        for publisher in EsPredictorState.broker_publishers:
-                            #if publisher.address=="eu.nebulouscloud.monitoring.preliminary_predicted.exponentialsmoothing"+attribute:
-
-                            if publisher.key=="publisher_"+application_name+"-"+attribute:
-                                publisher.send(prediction_message_body,application_name)
-
-
-                        #State.connection.send_to_topic('intermediate_prediction.%s.%s' % (id, attribute), prediction_message_body)
-
-                        #State.connection.send_to_topic('training_models',training_models_message_body)
-                        message_not_sent = False
-                        print_with_time("Successfully sent prediction message for "+str(attribute)+" to topic "+EsPredictorState.get_prediction_publishing_topic(attribute)+":\n\n%s\n\n" % (prediction_message_body))
-                    except Exception as exception:
-                        #State.connection.disconnect()
-                        #State.connection = messaging.morphemic.Connection('admin', 'admin')
+                    break
+                for attribute in application_state.metrics_to_predict:
+                    if(not prediction[attribute].prediction_valid):
+                        #continue was here, to continue while loop, replaced by break
+                        logging.warning(f"There was an invalid prediction for attribute {attribute}")
+                        try:
+                            logging.warning(f"The prediction value was {prediction[attribute].value} - breaking")
+                        except Exception as e:
+                            logging.error(str(e))
+                            
+                        continue
+                    if (EsPredictorState.disconnected or EsPredictorState.check_stale_connection()):
+                        logging.info("Possible problem due to disconnection or a stale connection")
                         #State.connection.connect()
-                        logging.error("Error sending intermediate prediction"+str(exception))
-                        EsPredictorState.disconnected = False
-
-        if (first_prediction is not None):
-            application_state.previous_prediction = first_prediction #first_prediction is the first of the batch of the predictions which are produced. The size of this batch is set by the State.total_time_intervals_to_predict (currently set to 8)
-
-        #State.number_of_days_to_use_data_from = (prediction_horizon - State.prediction_processing_time_safety_margin_seconds) / (wait_time / State.number_of_days_to_use_data_from)
-        #State.number_of_days_to_use_data_from = 1 + int(
-        #    (prediction_horizon - State.prediction_processing_time_safety_margin_seconds) /
-        #    (wait_time / State.number_of_days_to_use_data_from)
-        #)
-
-
+                    message_not_sent = True
+                    current_time = int(time.time())
+                    prediction_message_body = {
+                        "metricValue": float(prediction[attribute].value),
+                        "level": 3,
+                        "timestamp": current_time,
+                        "probability": 0.95, #This is the default second parameter of the prediction intervals (first is 80%) created as part of the HoltWinters forecasting mode in R
+                        "confidence_interval": [float(prediction[attribute].lower_confidence_interval_value) ,  float(
+                            prediction[attribute].upper_confidence_interval_value)],
+                        "predictionTime": prediction_time,
+                    }
+                    training_models_message_body = {
+                        "metrics": application_state.metrics_to_predict,
+                        "forecasting_method": "exponentialsmoothing",
+                        "timestamp": current_time,
+                    }
+                    while (message_not_sent):
+                        try:
+                            #for publisher in State.broker_publishers:
+                            #    if publisher.
+                            for publisher in EsPredictorState.broker_publishers:
+                                #if publisher.address=="eu.nebulouscloud.monitoring.preliminary_predicted.exponentialsmoothing"+attribute:
+    
+                                if publisher.key=="publisher_"+application_name+"-"+attribute:
+                                    publisher.send(prediction_message_body,application_name)
+    
+    
+                            #State.connection.send_to_topic('intermediate_prediction.%s.%s' % (id, attribute), prediction_message_body)
+    
+                            #State.connection.send_to_topic('training_models',training_models_message_body)
+                            message_not_sent = False
+                            print_with_time("Successfully sent prediction message for "+str(attribute)+" to topic "+EsPredictorState.get_prediction_publishing_topic(attribute)+":\n\n%s\n\n" % (prediction_message_body))
+                        except Exception as exception:
+                            #State.connection.disconnect()
+                            #State.connection = messaging.morphemic.Connection('admin', 'admin')
+                            #State.connection.connect()
+                            logging.error("Error sending intermediate prediction"+str(exception))
+                            EsPredictorState.disconnected = False
+    
+            if (first_prediction is not None):
+                application_state.previous_prediction = first_prediction #first_prediction is the first of the batch of the predictions which are produced. The size of this batch is set by the State.total_time_intervals_to_predict (currently set to 8)
+         except Exception as e:
+             logging.error("Error in predicting: %s" % str(e))
+            #State.number_of_days_to_use_data_from = (prediction_horizon - State.prediction_processing_time_safety_margin_seconds) / (wait_time / State.number_of_days_to_use_data_from)
+            #State.number_of_days_to_use_data_from = 1 + int(
+            #    (prediction_horizon - State.prediction_processing_time_safety_margin_seconds) /
+            #    (wait_time / State.number_of_days_to_use_data_from)
+            #)
+    
+    
 #class Listener(messaging.listener.MorphemicListener):
 class BootStrap(ConnectorHandler):
     def publish_live_status(self,context,liveness_probe_key):
@@ -318,7 +334,7 @@ class BootStrap(ConnectorHandler):
             })
             time.sleep(1)
     def ready (self, context):
-        liveness_probe_key = 'exsmoothing_forecasting_eu.nebulouscloud.state.exponentialsmoothing.isalive'
+        liveness_probe_key = 'exsmoothing_publisher_eu.nebulouscloud.state.exponentialsmoothing.isalive'
         liveness_probe_publisher_exists = context.has_publisher(liveness_probe_key)
         
         if liveness_probe_publisher_exists:
@@ -359,6 +375,9 @@ class ConsumerHandler(Handler):
 
                 application_name = body["name"]
                 message_version = body["version"]
+                
+                if (application_name == None or application_name==''): 
+                    logging.info("An empty application name was provided in a metric list message. The body of the message is the following\n"+str(body))
                 application_state = None
                 individual_application_state = {}
                 application_already_defined = application_name in EsPredictorState.individual_application_state
@@ -384,6 +403,8 @@ class ConsumerHandler(Handler):
 
                     application_state.lower_bound_value.update(lower_bound_value)
                     application_state.upper_bound_value.update(upper_bound_value)
+                    
+                    print_with_time("Added new entries to upper and lower bound values for "+application_name+" - these are "+str(lower_bound_value)+" and "+str(upper_bound_value))
 
                 application_state.initial_metric_list_received = True
 
@@ -418,7 +439,24 @@ class ConsumerHandler(Handler):
                         application_state = EsPredictorState.individual_application_state[application_name]
 
                     if (not application_state.start_forecasting) or ((application_state.metrics_to_predict is not None) and (set(application_state.metrics_to_predict)!=set(body["metrics"]))):
+                        #If there is a new/altered set of metrics to predict
                         application_state.metrics_to_predict = body["metrics"]
+
+
+                        #Start writing epochstart,number_of_forward_predictions,prediction_horizon,metricToPredict1,metricToPredict2,metricToPredict3... to a file named APP_NAME_metrics_to_predict.txt
+                        
+                        Path(EsPredictorState.control_files_directory).mkdir(parents=True, exist_ok=True)
+                        filename = application_name+EsPredictorState.metrics_to_predict_suffix
+    
+                        with open(os.path.join(EsPredictorState.control_files_directory, filename), "w") as f:
+                            f.write(body["epoch_start"]+","+body["number_of_forward_predictions"]+","+body["prediction_horizon"]+",")
+                            for index in range(len(application_state.metrics_to_predict)):
+                                f.write(str(application_state.metrics_to_predict[index]))
+                                if (index!= len(application_state.metrics_to_predict)-1):
+                                    f.write(",")
+                            f.close()
+                        
+                        
                         print_with_time("Received request to start predicting the following metrics: "+ ",".join(application_state.metrics_to_predict)+" for application "+application_name+", proceeding with the prediction process")
                         if (not application_state.start_forecasting):
                             #Coarse initialization, needs to be improved with metric_list message
@@ -515,15 +553,11 @@ class ConsumerHandler(Handler):
         
         elif (address).startswith(EsPredictorState.COMPONENT_STATE_PREFIX):
         
-            import os      
-            # Specify the directory and filename
-            from pathlib import Path
-            directory = "/home/r_predictions"
-            Path(directory).mkdir(parents=True, exist_ok=True)
+            Path(EsPredictorState.control_files_directory).mkdir(parents=True, exist_ok=True)
             filename = "is_alive.txt"
             
             # Create the file
-            with open(os.path.join(directory, filename), "w") as f:
+            with open(os.path.join(EsPredictorState.control_files_directory, filename), "w") as f:
                 current_message = f"Liveness probe received at {address}"
                 #current_message = print_with_time(f"Liveness probe received at {address}")
                 f.write(current_message)        
@@ -568,29 +602,31 @@ def main():
           "eu.nebulouscloud.state.exponentialsmoothing.isalive"]
         
         topics_to_publish = ["eu.nebulouscloud.state.exponentialsmoothing.isalive"]
+        topics_to_publish.append("eu.nebulouscloud.forecasting.start_forecasting.exponentialsmoothing") #Adding this topic in order to send manually a start forecasting if necessary
 
         current_consumers = []
         current_publishers = []
 
         for topic in topics_to_subscribe:
-            current_consumer = core.consumer.Consumer(key='exsmoothing_forecasting_'+topic,address=topic,handler=ConsumerHandler(), topic=True,fqdn=True)
+            current_consumer = core.consumer.Consumer(key='exsmoothing_consumer_'+topic,address=topic,handler=ConsumerHandler(), topic=True,fqdn=True)
             EsPredictorState.broker_consumers.append(current_consumer)
             current_consumers.append(current_consumer)
             
         for topic in topics_to_publish:
-            current_publisher = core.publisher.Publisher(key='exsmoothing_forecasting_'+topic,address=topic, topic=True,fqdn=True)
+            current_publisher = core.publisher.Publisher(key='exsmoothing_publisher_'+topic,address=topic, topic=True,fqdn=True)
             EsPredictorState.broker_publishers.append(current_publisher)
             current_publishers.append(current_publisher)
             
-        EsPredictorState.subscribing_connector = connector.EXN(EsPredictorState.forecaster_name, handler=BootStrap(),
-                                                               #consumers=list(State.broker_consumers),
-                                                               consumers=EsPredictorState.broker_consumers,
-                                                               publishers=EsPredictorState.broker_publishers,
-                                                               url=EsPredictorState.broker_address,
-                                                               port=EsPredictorState.broker_port,
-                                                               username=EsPredictorState.broker_username,
-                                                               password=EsPredictorState.broker_password
-                                                               )
+        EsPredictorState.subscribing_connector = connector.EXN(
+            EsPredictorState.forecaster_name, handler=BootStrap(),
+            #consumers=list(State.broker_consumers),
+               consumers=EsPredictorState.broker_consumers,
+               publishers=EsPredictorState.broker_publishers,
+               url=EsPredictorState.broker_address,
+               port=EsPredictorState.broker_port,
+               username=EsPredictorState.broker_username,
+               password=EsPredictorState.broker_password
+        )
 
 
         #connector.start()
@@ -599,6 +635,37 @@ def main():
         EsPredictorState.disconnected = False;
 
         print_with_time("Checking (EMS) broker connectivity state, possibly ready to start")
+        
+        time.sleep(5)
+        for publisher in EsPredictorState.broker_publishers:
+            if publisher.key=="exsmoothing_publisher_eu.nebulouscloud.forecasting.start_forecasting.exponentialsmoothing":
+                try:
+                    Path(EsPredictorState.control_files_directory).mkdir(parents=True, exist_ok=True)
+                    for filename in os.listdir(EsPredictorState.control_files_directory):
+                        application_name = filename.split(EsPredictorState.metrics_to_predict_suffix)[0]
+    
+                        # Create the file
+                        with open(os.path.join(EsPredictorState.control_files_directory, filename), "r") as f:
+                            json_message = {}
+                            
+                            epoch_start = f.read().split(",")[0]
+                            number_of_forward_predictions = f.read().split(",")[1]
+                            prediction_horizon = f.read().split(",")[2]
+                            metrics_to_predict = f.read().split(",")[3:]
+                            logging.debug("Read cached metrics to predict")
+                            
+                            json_message["application_name"] = application_name
+                            json_message["metrics"] = metrics_to_predict
+                            json_message["epoch_start"] = epoch_start
+                            json_message["number_of_forward_predictions"] = number_of_forward_predictions
+                            json_message["prediction_horizon"] = prediction_horizon
+                            
+                            publisher.send(json_message,application_name)
+                            print_with_time("Sent message based on the cached application details")
+                except FileNotFoundError as e:
+                    logging.error("There was an issue in finding the cached metrics to predict in the relevant file")
+                        
+        
         if (EsPredictorState.disconnected or EsPredictorState.check_stale_connection()):
             try:
                 #State.connection.disconnect() #required to avoid the already connected exception

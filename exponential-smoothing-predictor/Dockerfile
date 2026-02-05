@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt && python3 setup.py sdist
 
 #FROM ubuntu:noble
 FROM python:3.11-slim
-RUN mkdir -p /home/r_predictions
+RUN mkdir -p /home/r_predictions/control_directory
 
 #RUN apt-get update
 ENV LOG_FILE=/home/r_predictions/exponential_smoothing.log
