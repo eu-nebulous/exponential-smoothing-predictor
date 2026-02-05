@@ -378,6 +378,7 @@ class ConsumerHandler(Handler):
                 
                 if (application_name == None or application_name==''): 
                     logging.info("An empty application name was provided in a metric list message. The body of the message is the following\n"+str(body))
+                    return
                 application_state = None
                 individual_application_state = {}
                 application_already_defined = application_name in EsPredictorState.individual_application_state
