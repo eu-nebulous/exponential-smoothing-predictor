@@ -3,7 +3,6 @@ import threading
 import time
 from logging import WARNING
 
-
 from proton.handlers import MessagingHandler
 from .publisher import Publisher
 import uuid
