@@ -1,2 +1,5 @@
 __pycache__/
 .nox/
+.venv/
+.vscode/
+exponential-smoothing-predictor/src/build/

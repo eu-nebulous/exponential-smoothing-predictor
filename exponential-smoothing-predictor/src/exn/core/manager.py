@@ -15,7 +15,8 @@ from .handler import Handler
 from .synced_publisher import SyncedPublisher
 
 _logger = logging.getLogger(__name__)
-_logger.setLevel(logging.WARNING)
+_logger.setLevel(logging.DEBUG)
+
 
 class SessionPerConsumer(object):
     def session(self, connection: Connection) -> Session:
@@ -31,9 +32,11 @@ class Manager(MessagingHandler):
     connection = None
     _on_ready = None
 
-    def __init__(self, uri):
+    def __init__(self, uri, username=None, password=None):
         super(Manager, self).__init__()
         self.uri = uri
+        self.username = username
+        self.password = password
 
     def start(self):
         _logger.info(f"[manager] starting")
@@ -41,10 +44,19 @@ class Manager(MessagingHandler):
         self.container.run()
 
     def on_start(self, event: Event) -> None:
-        self.connection = self.container.connect(self.uri,)
-        self.connection._session_policy = SessionPerConsumer()
-        def connection_state():
+        if self.username:
+            # basic username and password authentication
+            self.connection = event.container.connect(url=self.uri,
+                                                      user=self.username,
+                                                      password=self.password,
+                                                      allow_insecure_mechs=True)
+        else:
+            # Anonymous authentication
+            self.connection = event.container.connect(url=self.uri)
 
+        self.connection._session_policy = SessionPerConsumer()
+
+        def connection_state():
             while self.connection.state != 18:
                 time.sleep(0.05)
             self.started = True
