@@ -22,6 +22,8 @@ class EsPredictorState:
     """
     Fail-safe default values introduced below
     """
+    control_files_directory = "/home/r_predictions/control_directory"
+    metrics_to_predict_suffix = "_metrics_to_predict.txt"
     preliminary_prediction_publishing_topic_prefix = "eu.nebulouscloud.monitoring.preliminary_predicted."
     prediction_publishing_topic_prefix = "eu.nebulouscloud.monitoring.predicted."
     publish_predictions_as_preliminary = True
