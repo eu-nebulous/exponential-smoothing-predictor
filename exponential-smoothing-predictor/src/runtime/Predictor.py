@@ -643,6 +643,8 @@ def main():
                 try:
                     Path(EsPredictorState.control_files_directory).mkdir(parents=True, exist_ok=True)
                     for filename in os.listdir(EsPredictorState.control_files_directory):
+                        if not filename.endswith(EsPredictorState.metrics_to_predict_suffix):
+                            continue
                         application_name = filename.split(EsPredictorState.metrics_to_predict_suffix)[0]
     
                         # Create the file
@@ -663,8 +665,9 @@ def main():
                             
                             publisher.send(json_message,application_name)
                             print_with_time("Sent message based on the cached application details")
-                except FileNotFoundError as e:
+                except Exception as e:
                     logging.error("There was an issue in finding the cached metrics to predict in the relevant file")
+                    logging.error(str(e))
                         
         
         if (EsPredictorState.disconnected or EsPredictorState.check_stale_connection()):
